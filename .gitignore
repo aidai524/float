@@ -1,0 +1,29 @@
+# 依赖与构建
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# 密钥与本地状态
+.env
+.env.*
+!.env.example
+.devsession/
+tools/bin/
+
+# 日志与缓存
+*.log
+.cache/
+coverage/
+
+# 编辑器 / 系统
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Cloudflare / Supabase 本地
+.wrangler/
+supabase/.branches/
+supabase/.temp/

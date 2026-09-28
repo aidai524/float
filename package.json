@@ -1,0 +1,30 @@
+{
+  "name": "crypto-event-engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "notify": "scripts/notify.sh",
+    "devsession": "scripts/devsession.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/node": "^22.10.1",
+    "eslint": "^9.15.0",
+    "prettier": "^3.4.1",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0",
+    "vitest": "^2.1.8"
+  }
+}

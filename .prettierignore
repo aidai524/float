@@ -1,0 +1,9 @@
+node_modules
+dist
+.turbo
+pnpm-lock.yaml
+tools/bin
+.devsession
+**/*.md
+supabase/migrations
+supabase/seed
