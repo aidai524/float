@@ -102,11 +102,13 @@ is_running() {
 
 watchdog() {
   echo $$ >"$PIDFILE"
-  trap 'deactivate; rm -f "$PIDFILE"; log "watchdog exit"; exit 0' TERM INT
+  trap 'deactivate; [ "$(cat "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE"; log "watchdog exit"; exit 0' TERM INT
   log "watchdog start dim=$DIM idle=${IDLE}s amph=$USE_AMPH session_file=${SESSION_FILE:-none}"
 
   local idle_secs=0
   while true; do
+    # 自愈：每次循环重写 pidfile，防止被旧进程删除
+    echo $$ >"$PIDFILE"
     local last=0 now age m
     last=$(stat -f %m "$HB" 2>/dev/null || echo 0)
     if [ -n "$SESSION_FILE" ] && [ -f "$SESSION_FILE" ]; then
@@ -132,9 +134,14 @@ watchdog() {
 
 cmd_start() {
   touch "$HB"
-  if is_running; then log "already running pid=$(cat "$PIDFILE")"; echo "devsession already running"; return 0; fi
-  # 清理可能残留的 caffeinate
-  caffeine_running && kill "$(cat "$CAFFEINE_PID")" 2>/dev/null; rm -f "$CAFFEINE_PID"
+  # 通过进程扫描去重，避免残留 pidfile 导致重复启动多个 watchdog
+  local existing
+  existing="$(pgrep -f "bash .*devsession\.sh run" | head -1)"
+  if [ -n "$existing" ]; then
+    echo "$existing" >"$PIDFILE"
+    echo "devsession already running (pid $existing)"
+    return 0
+  fi
   nohup "$0" run >/dev/null 2>&1 &
   disown 2>/dev/null || true
   echo "devsession started (pid $!)"
