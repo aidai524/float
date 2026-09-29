@@ -9,9 +9,9 @@
  *   - playwright  普通 Playwright（真 Chromium）
  *   - patchright  反检测分支，专治 Cloudflare（需单独安装）
  *
- * 安装（至少一个）：
- *   pnpm add -D playwright  && pnpm exec playwright  install chromium
- *   pnpm add -D patchright  && pnpm exec patchright  install chromium
+ * 安装（至少装一个 JS 引擎；浏览器可不下载，用系统 CHROME_PATH 代替）：
+ *   pnpm add -D playwright  && pnpm exec playwright  install chromium   # 或
+ *   pnpm add -D patchright  && pnpm exec patchright  install chromium   # 或
  *
  * 用法：
  *   node scripts/fetch-defillama-browser.mjs                 # 依次试 4 种组合
@@ -24,12 +24,10 @@
  *   xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful
  *
  * Arch / 非官方支持的系统：
- *   先按原样跑（会自动回退到 ubuntu24.04 构建）。若报缺共享库：
- *     sudo pacman -S --needed nss nspr atk at-spi2-atk cups libdrm libxkbcommon \
- *       libxcomposite libxdamage libxfixes libxrandr mesa pango cairo alsa-lib gtk3 libxshmfence
- *   若下载的构建仍跑不起来，用系统 Chromium（注意会失去 patchright 的隐身优势）：
- *     sudo pacman -S chromium
+ *   官方构建常装不上（spawn ENOENT）。直接用系统 Chromium：
+ *     sudo pacman -S --needed chromium xorg-server-xvfb
  *     CHROME_PATH=/usr/bin/chromium node scripts/fetch-defillama-browser.mjs
+ *   root 运行时脚本会自动加 --no-sandbox。
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -70,9 +68,14 @@ async function attempt(mod, { engine, headless }) {
   process.stdout.write(`→ ${label} … `);
   let browser;
   try {
+    const launchArgs = ["--disable-blink-features=AutomationControlled"];
+    // 以 root 跑 Chromium 必须加 --no-sandbox，否则直接拒绝启动
+    if (typeof process.getuid === "function" && process.getuid() === 0) {
+      launchArgs.push("--no-sandbox", "--disable-setuid-sandbox");
+    }
     const launchOpts = {
       headless,
-      args: ["--disable-blink-features=AutomationControlled"],
+      args: launchArgs,
       // Arch 等平台可用系统 Chromium 绕过官方构建的依赖问题
       ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
     };
