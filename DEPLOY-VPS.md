@@ -15,9 +15,9 @@
 # Node 22
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs git
-# pnpm（用 corepack，版本跟随 package.json）
-sudo corepack enable
-corepack prepare pnpm@12.6.0 --activate
+# pnpm（Debian：corepack；Alpine 无 corepack → 用 npm 全局装）
+sudo corepack enable && corepack prepare pnpm@12.6.0 --activate
+# Alpine 改用：apk add nodejs npm git && npm install -g pnpm@12.6.0
 ```
 
 ## 2. 拉代码 + 依赖

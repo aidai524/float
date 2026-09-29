@@ -16,14 +16,21 @@ mm="${time##*:}"
 
 case "$cmd" in
   install)
+    NODEBIN="$(dirname "$(command -v node || true)")"
+    # 优先 pnpm；Alpine 等没有 corepack/pnpm 的环境回退到 npx
     PNPM="$(command -v pnpm || true)"
-    [ -n "$PNPM" ] || { echo "找不到 pnpm" >&2; exit 1; }
-    NODEBIN="$(dirname "$(command -v node || command -v pnpm)")"
+    if [ -n "$PNPM" ]; then
+      DAILY_CMD="\"$PNPM\" daily"
+    else
+      NPX="$(command -v npx || true)"
+      [ -n "$NPX" ] || { echo "需要 pnpm 或 npx（Node 自带）" >&2; exit 1; }
+      DAILY_CMD="\"$NPX\" --yes tsx scripts/daily-refresh.ts"
+    fi
     mkdir -p "$ROOT/.devsession"
     # cron 环境极简：显式带 PATH，且 source .env（脚本本身也会兜底 loadEnvFile）
-    entry="$mm $hh * * * cd $ROOT && export PATH=\"$NODEBIN:/usr/local/bin:/usr/bin:/bin\" && [ -f .env ] && set -a && . ./.env; set +a; \"$PNPM\" daily >> \"$LOG\" 2>&1 $MARK"
+    entry="$mm $hh * * * cd $ROOT && export PATH=\"$NODEBIN:/usr/local/bin:/usr/bin:/bin\" && [ -f .env ] && set -a && . ./.env; set +a; $DAILY_CMD >> \"$LOG\" 2>&1 $MARK"
     ( crontab -l 2>/dev/null | grep -v "$MARK" || true; echo "$entry" ) | crontab -
-    echo "✓ 已安装 crontab：每天 $time 跑 pnpm daily"
+    echo "✓ 已安装 crontab：每天 $time 跑 pnpm daily（无 pnpm 时用 npx tsx）"
     echo "  日志：$LOG"
     echo "  查看：crontab -l | grep float-daily"
     ;;
