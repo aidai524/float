@@ -18,7 +18,10 @@ interface SourceRec {
   detail: Record<string, unknown> | null;
 }
 
-/** 与 SQL 函数 canonical_dedupe_key 保持完全一致 */
+/** 与 SQL 函数 canonical_dedupe_key 保持一致。
+ * listing_* 用"日"分桶（同一代币同一天的多次公告视为同一事件）；
+ * 其余事件类型用"小时"分桶。
+ */
 export function canonicalKey(
   eventType: string | null,
   token: string | null,
@@ -26,11 +29,12 @@ export function canonicalKey(
   magnitude: number | null,
 ): string {
   const d = t0 ? new Date(t0) : new Date(0);
-  const ymdh =
-    `${d.getUTCFullYear()}` +
-    `${String(d.getUTCMonth() + 1).padStart(2, "0")}` +
-    `${String(d.getUTCDate()).padStart(2, "0")}` +
-    `${String(d.getUTCHours()).padStart(2, "0")}`;
+  const y = `${d.getUTCFullYear()}`;
+  const mo = `${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const day = `${String(d.getUTCDate()).padStart(2, "0")}`;
+  const hh = `${String(d.getUTCHours()).padStart(2, "0")}`;
+  const isListing = (eventType ?? "").toLowerCase().startsWith("listing");
+  const when = isListing ? `${y}${mo}${day}` : `${y}${mo}${day}${hh}`;
   const bucket =
     magnitude == null
       ? "na"
@@ -41,7 +45,7 @@ export function canonicalKey(
           : magnitude < 10_000_000
             ? "lt10m"
             : "gte10m";
-  return [eventType ?? "", token ?? "", ymdh, bucket].join("|").toLowerCase();
+  return [eventType ?? "", token ?? "", when, bucket].join("|").toLowerCase();
 }
 
 /** 按 priority 升序（越小越优先）取第一个非空值 */
@@ -119,6 +123,7 @@ export async function resolveEvents(
           magnitude_pct: mergeField<number>(recs, priority, "magnitude_pct"),
           title: (primary.detail as any)?.title ?? null,
           source_url: primary.source_url,
+          asset_class: (primary.detail as any)?.asset_class_hint ?? "unknown",
           detail: Object.assign({}, ...recs.map((r) => r.detail ?? {}), {
             category: (primary.detail as any)?.category,
           }),

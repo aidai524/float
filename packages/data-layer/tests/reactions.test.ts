@@ -106,10 +106,12 @@ describe("computeReactions", () => {
     expect(r.liquidityOk).toBeNull();
   });
 
-  it("缺少 T0 前数据时退化为 T0 后第一根", () => {
+  it("缺少 T0 前数据时退化为 T0 后第一根，并从该根起算", () => {
     const r = computeReactions(POST, [], T0, { priceSource: "binance" })!;
     expect(r.baseAfterT0).toBe(true);
     expect(r.baseTs).toBe(T0);
+    // anchor = base.ts = T0，所以 5m 仍在 T0+5m
+    expect(r.ret5m!).toBeCloseTo(0.005, 4);
   });
 
   it("数据不足以覆盖 24h 时该窗口为 null", () => {

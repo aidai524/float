@@ -38,6 +38,9 @@ const minAgeHours = (() => {
   return i >= 0 ? Number(process.argv[i + 1]) : 4;
 })();
 
+/** 回填场景不落 K 线，避免撑爆免费额度 */
+const noStore = process.argv.includes("--no-store");
+
 interface EventRow {
   id: number;
   token_symbol: string;
@@ -79,6 +82,7 @@ async function fetchKlines(
 }
 
 async function upsertCandles(symbol: string, interval: string, candles: Candle[]) {
+  if (noStore) return; // 回填模式：只算不存
   const rows = candles.map((c) => ({
     source_id: SOURCE,
     symbol,
@@ -170,7 +174,7 @@ async function main() {
         continue;
       }
       await upsertCandles(symbol, "1h", fetched);
-      hourly = await loadCandles(symbol, "1h", hrFrom, hrTo);
+      hourly = fetched;
       await sleep(120);
     }
 
@@ -187,7 +191,7 @@ async function main() {
           continue;
         }
         await upsertCandles(symbol, "1m", fetched);
-        m1 = await loadCandles(symbol, "1m", m1From, m1To);
+        m1 = fetched;
         await sleep(120);
       }
 

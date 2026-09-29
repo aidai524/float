@@ -3,7 +3,7 @@
  * 服务端使用（构建期 / SSR），密钥只走服务端。
  */
 import { createClient } from "@supabase/supabase-js";
-import type { Candle, EventV1, TokenV1 } from "./types";
+import type { Candle, EventTypeStatsV1, EventV1, TokenV1 } from "./types";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,7 +14,7 @@ if (!url || !key) {
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 const api = supabase.schema("api");
 
-export async function listEvents(limit = 300): Promise<EventV1[]> {
+export async function listEvents(limit = 1000): Promise<EventV1[]> {
   const { data, error } = await api
     .from("events_v1")
     .select("*")
@@ -38,6 +38,28 @@ export async function listTokens(limit = 400): Promise<TokenV1[]> {
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as TokenV1[];
+}
+
+/** 事件类型基准（样本 >= minN 才返回） */
+export async function listTypeStats(minN = 5): Promise<EventTypeStatsV1[]> {
+  const { data, error } = await api
+    .from("event_type_stats_v1")
+    .select("*")
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as EventTypeStatsV1[];
+}
+
+/** 某事件在同类中的百分位 */
+export async function getBaseline(eventId: number): Promise<any | null> {
+  const { data, error } = await api
+    .from("event_baseline_v1")
+    .select("*")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? null;
 }
 
 export async function listEventsForToken(symbol: string): Promise<EventV1[]> {

@@ -1,0 +1,103 @@
+---
+import type { EventTypeStatsV1 } from "../lib/types";
+import { ASSET_COLOR, eventTypeLabel } from "../lib/format";
+
+interface Props {
+  stats: EventTypeStatsV1[];
+  generatedAt: string;
+}
+const { stats, generatedAt } = Astro.props;
+
+const p = (v: number | null) =>
+  v == null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%`;
+const pCls = (v: number | null) =>
+  v == null ? "text-slate-600" : v >= 0 ? "text-emerald-400" : "text-red-400";
+const posPct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+
+// 同一事件类型跨资产类别再汇总（主视图用），保留细分
+const byType = new Map<string, { n: number; rows: EventTypeStatsV1[] }>();
+for (const s of stats) {
+  const cur = byType.get(s.event_type) ?? { n: 0, rows: [] };
+  cur.n += s.n;
+  cur.rows.push(s);
+  byType.set(s.event_type, cur);
+}
+
+const weighted = (rows: EventTypeStatsV1[], key: keyof EventTypeStatsV1) => {
+  const vals = rows
+    .map((r) => ({ v: r[key] as number | null, n: r.n }))
+    .filter((x): x is { v: number; n: number } => x.v != null);
+  if (!vals.length) return null;
+  const total = vals.reduce((a, x) => a + x.n, 0);
+  return vals.reduce((a, x) => a + x.v * x.n, 0) / total;
+};
+
+const rows = [...byType.entries()]
+  .map(([type, { n, rows: rs }]) => ({
+    type,
+    n,
+    assets: [...new Set(rs.map((r) => r.asset_class))],
+    m5: weighted(rs, "median_5m"),
+    m1: weighted(rs, "median_1h"),
+    m4: weighted(rs, "median_4h"),
+    m24: weighted(rs, "median_24h"),
+    pos1: weighted(rs, "pos_1h"),
+    pos4: weighted(rs, "pos_4h"),
+  }))
+  .sort((a, b) => b.n - a.n);
+
+const th =
+  "px-3 py-2 text-left text-[11px] uppercase tracking-wide text-[var(--color-mut)] font-semibold whitespace-nowrap";
+const td = "px-3 py-2 border-b border-[var(--color-line)]";
+---
+<section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+  <h2 class="m-0 text-[13px] font-semibold">事件类型基准 · 这类事件历史上一般怎么走</h2>
+  <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+    样本来自所有已测量事件（剔除低流动性与未分类）。N 是样本量——<strong>N 小于 20 时请不要当结论</strong>。
+  </p>
+
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-[13px]">
+      <thead>
+        <tr>
+          <th class={th}>事件类型</th>
+          <th class={th}>资产</th>
+          <th class={`${th} text-right`}>样本 N</th>
+          <th class={`${th} text-right`}>5m 中位</th>
+          <th class={`${th} text-right`}>1h 中位</th>
+          <th class={`${th} text-right`}>4h 中位</th>
+          <th class={`${th} text-right`}>24h 中位</th>
+          <th class={`${th} text-right`}>4h 上涨占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((r) => (
+            <tr class="hover:bg-[#16223c]">
+              <td class={td}>{eventTypeLabel(r.type)}</td>
+              <td class={`${td} text-[11px]`}>
+                {r.assets.map((a) => (
+                  <span
+                    class="mr-1 inline-block rounded-full px-2 py-[1px] font-semibold text-white"
+                    style={`background:${ASSET_COLOR[a] ?? "#64748b"}`}
+                  >
+                    {a}
+                  </span>
+                ))}
+              </td>
+              <td class={`${td} mono text-right ${r.n < 20 ? "text-amber-400" : ""}`}>{r.n}</td>
+              <td class={`${td} mono text-right ${pCls(r.m5)}`}>{p(r.m5)}</td>
+              <td class={`${td} mono text-right ${pCls(r.m1)}`}>{p(r.m1)}</td>
+              <td class={`${td} mono text-right ${pCls(r.m4)}`}>{p(r.m4)}</td>
+              <td class={`${td} mono text-right ${pCls(r.m24)}`}>{p(r.m24)}</td>
+              <td class={`${td} mono text-right text-[var(--color-mut)]`}>{posPct(r.pos4)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="mb-0 mt-3 text-[11px] text-[var(--color-mut)]">
+    口径 methodology v1 · 数据更新于 {generatedAt} UTC · 中位数为按样本量加权
+  </p>
+</section>

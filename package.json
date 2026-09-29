@@ -21,7 +21,8 @@
     "enrich": "tsx scripts/enrich.ts",
     "preview": "tsx scripts/preview.ts",
     "backfill": "tsx scripts/backfill-candles.ts",
-    "reactions": "tsx scripts/compute-reactions.ts"
+    "reactions": "tsx scripts/compute-reactions.ts",
+    "backfill:events": "tsx scripts/backfill-events.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

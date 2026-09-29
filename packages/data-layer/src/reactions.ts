@@ -179,12 +179,16 @@ export function computeReactions(
   const basePrice = base.close;
   const baseAfterT0 = !before;
 
+  // 上币公告常常早于开盘（例：DAI 公告 11:04、开盘 14:00）。
+  // 基准取自 T0 之后时，从"首个成交时刻"起算，否则 5m/15m/1h 会大量为空。
+  const anchor = baseAfterT0 ? base.ts : t0;
+
   const retAt = (minutes: number): number | null => {
-    const c = nearest(m1, t0 + minutes * MINUTE, TOLERANCE_MIN * MINUTE);
+    const c = nearest(m1, anchor + minutes * MINUTE, TOLERANCE_MIN * MINUTE);
     return c ? c.close / basePrice - 1 : null;
   };
 
-  const extrema = windowInclusive(m1, t0, t0 + EXTREME_WINDOW_MIN * MINUTE);
+  const extrema = windowInclusive(m1, anchor, anchor + EXTREME_WINDOW_MIN * MINUTE);
   const maxFavorable = extrema.length
     ? Math.max(...extrema.map((c) => c.high)) / basePrice - 1
     : null;
@@ -192,17 +196,17 @@ export function computeReactions(
     ? Math.min(...extrema.map((c) => c.low)) / basePrice - 1
     : null;
 
-  const vol1hWindow = window(m1, t0, t0 + 60 * MINUTE);
-  const vol5mWindow = window(m1, t0, t0 + 5 * MINUTE);
+  const vol1hWindow = window(m1, anchor, anchor + 60 * MINUTE);
+  const vol5mWindow = window(m1, anchor, anchor + 5 * MINUTE);
   const eventHourVolume = vol1hWindow.reduce((a, c) => a + c.volume, 0);
-  const baseline = baselineHourlyVolume(hr, t0);
+  const baseline = baselineHourlyVolume(hr, anchor);
   const volRatio =
     baseline && baseline > 0 && vol1hWindow.length ? eventHourVolume / baseline : null;
 
-  const adv = adv30d(hr, t0);
+  const adv = adv30d(hr, anchor);
   const threshold = opts.advThresholdUsd ?? DEFAULT_ADV_THRESHOLD_USD;
   // 基准历史不足（新币上线等）→ 不做流动性判定，标为 unknown
-  const coverageDays = hr.length ? (t0 - hr[0]!.ts) / DAY_MS : 0;
+  const coverageDays = hr.length ? (anchor - hr[0]!.ts) / DAY_MS : 0;
   const liquidityOk = coverageDays >= MIN_BASELINE_DAYS ? adv >= threshold : null;
 
   return {

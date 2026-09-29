@@ -9,9 +9,21 @@ describe("canonicalKey（与 SQL 函数 canonical_dedupe_key 对齐）", () => {
     expect(a).toBe(b);
   });
 
-  it("跨小时 → 不同 key", () => {
-    const a = canonicalKey("listing_cex", "SOL", "2026-09-28T10:55:00Z", 250_000);
-    const b = canonicalKey("listing_cex", "SOL", "2026-09-28T11:01:00Z", 250_000);
+  it("listing：同一天的不同小时 → 合并为同一事件", () => {
+    const a = canonicalKey("listing_cex", "SOL", "2026-09-28T07:30:00Z", null);
+    const b = canonicalKey("listing_cex", "SOL", "2026-09-28T10:45:00Z", null);
+    expect(a).toBe(b);
+  });
+
+  it("listing：跨天 → 不同 key", () => {
+    const a = canonicalKey("listing_cex", "SOL", "2026-09-28T23:55:00Z", null);
+    const b = canonicalKey("listing_cex", "SOL", "2026-09-29T00:05:00Z", null);
+    expect(a).not.toBe(b);
+  });
+
+  it("非 listing：跨小时 → 不同 key", () => {
+    const a = canonicalKey("upgrade", "ETH", "2026-09-28T10:55:00Z", null);
+    const b = canonicalKey("upgrade", "ETH", "2026-09-28T11:01:00Z", null);
     expect(a).not.toBe(b);
   });
 

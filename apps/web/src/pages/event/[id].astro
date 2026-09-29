@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import PriceChart from "../../components/PriceChart";
-import { getEventCandles, listEvents } from "../../lib/db";
+import { getBaseline, getEventCandles, listEvents } from "../../lib/db";
 import {
   ASSET_COLOR,
   eventFacts,
@@ -16,12 +16,13 @@ import {
 } from "../../lib/format";
 
 export async function getStaticPaths() {
-  const events = await listEvents(300);
+  const events = await listEvents(1000);
   return events.map((e) => ({ params: { id: String(e.id) }, props: { event: e } }));
 }
 
 const { event } = Astro.props;
 const e = event;
+const baseline = await getBaseline(e.id);
 
 const { interval, candles } = await getEventCandles(e.token_symbol, e.t0);
 const t = new Date(e.t0).getTime();
@@ -29,13 +30,19 @@ const markers = candles.length ? [{ t, label: "T0" }] : [];
 const facts = eventFacts(e);
 const liq = liquidityLabel(e.liquidity_ok);
 
-const horizons: Array<{ label: string; key: keyof typeof e }> = [
-  { label: "5m", key: "ret_5m" },
-  { label: "15m", key: "ret_15m" },
-  { label: "1h", key: "ret_1h" },
-  { label: "4h", key: "ret_4h" },
-  { label: "24h", key: "ret_24h" },
+const horizons: Array<{ label: string; key: keyof typeof e; pctKey: string }> = [
+  { label: "5m", key: "ret_5m", pctKey: "pct_5m" },
+  { label: "15m", key: "ret_15m", pctKey: "pct_15m" },
+  { label: "1h", key: "ret_1h", pctKey: "pct_1h" },
+  { label: "4h", key: "ret_4h", pctKey: "pct_4h" },
+  { label: "24h", key: "ret_24h", pctKey: "pct_24h" },
 ];
+
+const percentileLabel = (v: unknown): string | null => {
+  if (v == null) return null;
+  const n = Number(v);
+  return `同类历史 ${Math.round(n * 100)} 分位`;
+};
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -94,6 +101,7 @@ const jsonLd = {
     <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
       口径 methodology {e.methodology_version} · 基准价 {fmtPrice(e.base_price)}（
       {fmtTs(e.base_ts)}）· 价格源 {e.price_source ?? "—"} · 流动性 <span class={liq.cls}>{liq.text}</span>
+      {e.base_after_t0 && <span class="text-amber-400">· 从首个成交时刻起算</span>}
     </p>
     <div class="grid grid-cols-3 gap-3 sm:grid-cols-5">
       {
@@ -103,6 +111,11 @@ const jsonLd = {
             <div class={`mono mt-1 text-[16px] font-semibold ${pctClass(e[h.key] as number | null)}`}>
               {pct(e[h.key] as number | null)}
             </div>
+            {baseline?.[h.pctKey] != null && (
+              <div class="mt-1 text-[10px] text-[var(--color-mut)]">
+                {percentileLabel(baseline[h.pctKey])}
+              </div>
+            )}
           </div>
         ))
       }

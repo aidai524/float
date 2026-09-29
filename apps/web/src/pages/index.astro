@@ -1,44 +1,41 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import EventTable from "../components/EventTable";
-import PriceChart from "../components/PriceChart";
-import { getCandles, listEvents } from "../lib/db";
+import BaselinePanel from "../components/BaselinePanel.astro";
+import { listEvents, listTypeStats } from "../lib/db";
+import { eventTypeLabel, fmtTs, pct, pctClass } from "../lib/format";
 
-const events = await listEvents(300);
-const btc = await getCandles("BTC", "1d", 400);
+const events = await listEvents(1000);
+const stats = await listTypeStats(5);
+
+const now = Date.now();
+const upcoming = events
+  .filter((e) => new Date(e.t0).getTime() > now)
+  .sort((a, b) => new Date(a.t0).getTime() - new Date(b.t0).getTime())
+  .slice(0, 10);
 
 const measured = events.filter((e) => e.ret_1h != null).length;
-const byAsset = events.reduce<Record<string, number>>((a, e) => {
-  a[e.asset_class] = (a[e.asset_class] ?? 0) + 1;
-  return a;
-}, {});
-const byType = events.reduce<Record<string, number>>((a, e) => {
-  a[e.event_type] = (a[e.event_type] ?? 0) + 1;
-  return a;
-}, {});
+const maxN = stats.reduce((a, s) => Math.max(a, s.n), 0);
+const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
 
 const cards = [
   { label: "事件总数", value: String(events.length) },
   { label: "已测量反应", value: String(measured) },
-  ...Object.entries(byAsset).map(([k, v]) => ({ label: `asset_class · ${k}`, value: String(v) })),
-  ...Object.entries(byType)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([k, v]) => ({ label: `type · ${k}`, value: String(v) })),
+  { label: "未来 7 天", value: String(events.filter((e) => {
+    const t = new Date(e.t0).getTime();
+    return t > now && t < now + 7 * 86400000;
+  }).length) },
+  { label: "基准覆盖（≥5 样本）", value: String(stats.length) },
+  { label: "最大样本 N", value: String(maxN) },
 ];
 
-const t0 = btc.length ? new Date(btc[0]!.ts).getTime() : 0;
-const t1 = btc.length ? new Date(btc[btc.length - 1]!.ts).getTime() : 0;
-// 只标注"有意义"的事件类型（跳过 unknown），标签只用代币名，避免拥挤
-const markers = events
-  .filter((e) => e.event_type !== "unknown")
-  .map((e) => ({ t: new Date(e.t0).getTime(), label: e.token_symbol }))
-  .filter((m) => m.t >= t0 && m.t <= t1);
-
-const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
+const daysUntil = (t: string) => {
+  const d = Math.ceil((new Date(t).getTime() - now) / 86400000);
+  return d <= 0 ? "今天" : d === 1 ? "明天" : `${d} 天后`;
+};
 ---
 <Layout subtitle={`数据更新于 ${generatedAt} UTC`}>
-  <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+  <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
     {
       cards.map((c) => (
         <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
@@ -49,16 +46,58 @@ const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
     }
   </div>
 
+  <div class="mb-5">
+    <BaselinePanel stats={stats} generatedAt={generatedAt} />
+  </div>
+
   <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-    <h2 class="m-0 text-[13px] font-semibold">BTC 日线 + 事件标注</h2>
+    <h2 class="m-0 text-[13px] font-semibold">接下来会发生什么</h2>
     <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
-      橙色箭头为事件 T0（窗口内 {markers.length} 个）。价格来自 Binance，事件来自交易所公告 / CoinMarketCal。
+      按时间排序的最近 {upcoming.length} 个未来事件。点标题进详情，点来源看原始公告。
     </p>
-    <PriceChart candles={btc} markers={markers} client:load />
+    {
+      upcoming.length === 0 ? (
+        <p class="text-[12px] text-[var(--color-mut)]">暂无已知的未来事件。</p>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px]">
+            <thead>
+              <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+                <th class="px-3 py-2 text-left">倒计时</th>
+                <th class="px-3 py-2 text-left">时间 (UTC)</th>
+                <th class="px-3 py-2 text-left">代币</th>
+                <th class="px-3 py-2 text-left">类型</th>
+                <th class="px-3 py-2 text-left">标题</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcoming.map((e) => (
+                <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
+                  <td class="mono px-3 py-2 text-amber-400">{daysUntil(e.t0)}</td>
+                  <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                    {fmtTs(e.t0)}
+                  </td>
+                  <td class="px-3 py-2 font-semibold">
+                    <a
+                      href={`/event/${e.id}`}
+                      class="no-underline text-[var(--color-fg)] hover:text-[var(--color-acc)]"
+                    >
+                      {e.token_symbol}
+                    </a>
+                  </td>
+                  <td class="mono px-3 py-2 text-[12px]">{eventTypeLabel(e.event_type)}</td>
+                  <td class="px-3 py-2">{e.title}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
   </section>
 
   <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-    <h2 class="m-0 mb-3 text-[13px] font-semibold">事件（最近 {events.length} 条）</h2>
+    <h2 class="m-0 mb-3 text-[13px] font-semibold">全部事件（{events.length} 条）</h2>
     <EventTable events={events} client:load />
   </section>
 </Layout>

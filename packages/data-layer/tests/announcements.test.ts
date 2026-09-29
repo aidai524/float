@@ -12,11 +12,15 @@ describe("公告文本工具", () => {
       isListingAnnouncement("Binance Will List Hyperliquid (HYPE) with Seed Tag Applied"),
     ).toBe(true);
     expect(isListingAnnouncement("Binance Will Add Hyperliquid (HYPE) on Earn, Margin")).toBe(true);
+    // 合约上线不算现货代币上线（另立一类，本轮不纳入）
     expect(
       isListingAnnouncement("Binance Futures Will Launch Multiple TradFi Perpetual Contracts"),
-    ).toBe(true);
+    ).toBe(false);
     expect(isListingAnnouncement("Bybit Copy Trading now supports TradFi Perpetuals")).toBe(false);
     expect(isListingAnnouncement("Binance Adds 5 Stocks on Stock Trading")).toBe(false);
+    expect(
+      isListingAnnouncement("Binance Will Add 3 bStocks Tokenized Securities as Collateral Asset"),
+    ).toBe(false);
   });
 
   it("抽取代币符号", () => {

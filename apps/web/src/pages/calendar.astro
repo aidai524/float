@@ -3,7 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import EventTable from "../components/EventTable";
 import { listEvents } from "../lib/db";
 
-const events = await listEvents(300);
+const events = await listEvents(1000);
 const upcoming = events.filter((e) => new Date(e.t0).getTime() > Date.now());
 const past = events.filter((e) => new Date(e.t0).getTime() <= Date.now());
 ---

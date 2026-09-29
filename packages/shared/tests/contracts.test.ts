@@ -8,6 +8,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EVENTS_V1_COLUMNS, TOKENS_V1_COLUMNS } from "../src/index";
+import {
+  EVENT_BASELINE_V1_COLUMNS,
+  EVENT_COHORT_V1_COLUMNS,
+  EVENT_TYPE_STATS_V1_COLUMNS,
+} from "../src/index";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = resolve(here, "../../../supabase/migrations");
@@ -86,5 +91,21 @@ describe("契约：api.* 视图列与 zod schema 一致", () => {
 
   it("api.tokens_v1", () => {
     expect(extractViewColumns(SQL, "api.tokens_v1")).toEqual([...TOKENS_V1_COLUMNS]);
+  });
+
+  it("api.event_cohort_v1", () => {
+    expect(extractViewColumns(SQL, "api.event_cohort_v1")).toEqual([...EVENT_COHORT_V1_COLUMNS]);
+  });
+
+  it("api.event_type_stats_v1", () => {
+    expect(extractViewColumns(SQL, "api.event_type_stats_v1")).toEqual([
+      ...EVENT_TYPE_STATS_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.event_baseline_v1", () => {
+    expect(extractViewColumns(SQL, "api.event_baseline_v1")).toEqual([
+      ...EVENT_BASELINE_V1_COLUMNS,
+    ]);
   });
 });
