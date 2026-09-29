@@ -41,8 +41,24 @@ cp .env.example .env          # 填入密钥（TypeSafe、Bark 等）
 | `pnpm test` | 单元测试 + 契约测试 |
 | `pnpm lint` | ESLint |
 | `pnpm format` / `format:check` | Prettier |
+| `pnpm ingest [source]` | 真实采集写入 Supabase（可选指定源） |
+| `pnpm ingest:dryrun` | 内存假 DB 验证采集路径 |
+| `scripts/db-migrate.sh` | 对云端 Supabase 应用迁移 + seed |
 | `scripts/devsession.sh start\|stop\|status` | 保持电脑清醒 + 屏幕压暗 |
 | `scripts/notify.sh "标题" "正文"` | Bark 手机通知 |
+
+## Supabase
+
+当前云端项目：`ynuvnrkcbbyzhdyludgi`（ap-southeast-1）。连接信息在 `.env`。
+
+```bash
+scripts/db-migrate.sh                 # 应用 supabase/migrations + seed
+pnpm ingest binance                   # 采集真实 K 线
+```
+
+> 注：本机因网络限制（VPN/MTU）无法用 Colima 跑本地 Docker，故统一使用云端 Supabase。
+> 直连 `db.<ref>.supabase.co` 只有 IPv6，本机不通，脚本一律用 `SUPABASE_DB_POOLER_URL`。
+> psql 来自 `brew install libpq`（`/opt/homebrew/opt/libpq/bin/psql`）。
 
 ### 开发会话守护
 
@@ -79,6 +95,12 @@ tools/          # brightness（C）
 ## 当前状态
 
 - [x] Phase 0：项目基线 + 契约冻结
-- [ ] Phase 1：数据采集与统一事件库（解锁 + 上币）
+- [x] Phase 0.5：Jev 判断模块（分类 0.98 / 去重 0.96 实测）
+- [🚧] Phase 1：数据采集与统一事件库（解锁 + 上币）
+  - [x] 云端 Supabase 建库 + 迁移 + 契约集成测试
+  - [x] 真实 Binance 数据写入云端（500 根 K 线）
+  - [ ] CoinMarketCal 上币事件接入
+  - [ ] 自建解锁精选库
+  - [ ] resolveEvents 跨源去重端到端
 - [ ] Phase 2：反应计算引擎
 - [ ] Phase 3：MVP 前端（日历 + 事件详情）

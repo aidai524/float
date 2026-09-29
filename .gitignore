@@ -27,3 +27,4 @@ coverage/
 .wrangler/
 supabase/.branches/
 supabase/.temp/
+.supabase-db-pass.txt
