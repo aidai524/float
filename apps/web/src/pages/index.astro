@@ -2,17 +2,80 @@
 import Layout from "../layouts/Layout.astro";
 import EventTable from "../components/EventTable";
 import BaselinePanel from "../components/BaselinePanel.astro";
-import { listEvents, listTypeStats } from "../lib/db";
-import { eventTypeLabel, fmtTs, pct, pctClass } from "../lib/format";
+import CategoryPanel from "../components/CategoryPanel.astro";
+import { listCategoryStats, listEvents, listTypeStats } from "../lib/db";
+import { eventTypeLabel, fmtTs, pct } from "../lib/format";
 
 const events = await listEvents(1000);
 const stats = await listTypeStats(5);
+const catStats = await listCategoryStats("listing_cex", 10);
 
 const now = Date.now();
+
+/** 事件类型的"信号权重"：1 最重要 */
+const SIGNAL_RANK: Record<string, number> = {
+  unlock_cliff: 1,
+  unlock_linear: 1,
+  listing_cex: 1,
+  listing_dex: 1,
+  macro_fomc: 1,
+  macro_cpi: 1,
+  etf: 1,
+  halving: 1,
+  exploit: 1,
+  delisting: 2,
+  mainnet_launch: 2,
+  tge: 2,
+  upgrade: 3,
+  listing_futures: 3,
+  airdrop: 3,
+  burn: 3,
+  migration: 3,
+  governance: 3,
+  testnet: 4,
+  incentive: 4,
+  partnership: 4,
+  integration: 4,
+  unknown: 5,
+};
+const TIER_LABEL: Record<number, { text: string; cls: string }> = {
+  1: { text: "高", cls: "bg-red-500/20 text-red-300" },
+  2: { text: "中", cls: "bg-amber-500/20 text-amber-300" },
+  3: { text: "低", cls: "bg-slate-500/20 text-slate-300" },
+  4: { text: "噪音", cls: "bg-slate-700/40 text-slate-400" },
+  5: { text: "未分类", cls: "bg-slate-700/40 text-slate-400" },
+};
+
+// 事件类型 → 基准（按样本量加权，跨资产类别汇总）
+const statByType = new Map<string, { n: number; med1h: number | null; pos4h: number | null }>();
+{
+  const acc = new Map<string, { n: number; m1: number[]; p4: number[] }>();
+  for (const s of stats) {
+    const a = acc.get(s.event_type) ?? { n: 0, m1: [], p4: [] };
+    a.n += s.n;
+    if (s.median_1h != null) a.m1.push(s.median_1h ?? 0);
+    if (s.pos_4h != null) a.p4.push(s.pos_4h ?? 0);
+    acc.set(s.event_type, a);
+  }
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  for (const [t, a] of acc) statByType.set(t, { n: a.n, med1h: avg(a.m1), pos4h: avg(a.p4) });
+}
+
+const horizonDays = 14;
 const upcoming = events
-  .filter((e) => new Date(e.t0).getTime() > now)
-  .sort((a, b) => new Date(a.t0).getTime() - new Date(b.t0).getTime())
-  .slice(0, 10);
+  .filter((e) => {
+    const t = new Date(e.t0).getTime();
+    return t > now && t < now + horizonDays * 86400000;
+  })
+  .sort((a, b) => {
+    const ra = SIGNAL_RANK[a.event_type] ?? 5;
+    const rb = SIGNAL_RANK[b.event_type] ?? 5;
+    if (ra !== rb) return ra - rb;
+    return new Date(a.t0).getTime() - new Date(b.t0).getTime();
+  })
+  .slice(0, 12);
+
+const withBaseline = upcoming.filter((e) => statByType.has(e.event_type));
 
 const measured = events.filter((e) => e.ret_1h != null).length;
 const maxN = stats.reduce((a, s) => Math.max(a, s.n), 0);
@@ -21,11 +84,11 @@ const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
 const cards = [
   { label: "事件总数", value: String(events.length) },
   { label: "已测量反应", value: String(measured) },
-  { label: "未来 7 天", value: String(events.filter((e) => {
+  { label: `未来 ${horizonDays} 天`, value: String(events.filter((e) => {
     const t = new Date(e.t0).getTime();
-    return t > now && t < now + 7 * 86400000;
+    return t > now && t < now + horizonDays * 86400000;
   }).length) },
-  { label: "基准覆盖（≥5 样本）", value: String(stats.length) },
+  { label: "已分类代币", value: String(catStats.reduce((a, s) => a + s.n, 0)) },
   { label: "最大样本 N", value: String(maxN) },
 ];
 
@@ -50,50 +113,74 @@ const daysUntil = (t: string) => {
     <BaselinePanel stats={stats} generatedAt={generatedAt} />
   </div>
 
+  <div class="mb-5">
+    <CategoryPanel stats={catStats} eventType="listing_cex" />
+  </div>
+
   <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-    <h2 class="m-0 text-[13px] font-semibold">接下来会发生什么</h2>
+    <h2 class="m-0 text-[13px] font-semibold">接下来 {horizonDays} 天 · 按信号强度排序</h2>
     <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
-      按时间排序的最近 {upcoming.length} 个未来事件。点标题进详情，点来源看原始公告。
+      排序 = 事件类型的信号强度，再看时间远近。有历史基准的会直接挂出来对照。
     </p>
+
     {
-      upcoming.length === 0 ? (
-        <p class="text-[12px] text-[var(--color-mut)]">暂无已知的未来事件。</p>
-      ) : (
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-[13px]">
-            <thead>
-              <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
-                <th class="px-3 py-2 text-left">倒计时</th>
-                <th class="px-3 py-2 text-left">时间 (UTC)</th>
-                <th class="px-3 py-2 text-left">代币</th>
-                <th class="px-3 py-2 text-left">类型</th>
-                <th class="px-3 py-2 text-left">标题</th>
-              </tr>
-            </thead>
-            <tbody>
-              {upcoming.map((e) => (
-                <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
-                  <td class="mono px-3 py-2 text-amber-400">{daysUntil(e.t0)}</td>
-                  <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">
-                    {fmtTs(e.t0)}
-                  </td>
-                  <td class="px-3 py-2 font-semibold">
-                    <a
-                      href={`/event/${e.id}`}
-                      class="no-underline text-[var(--color-fg)] hover:text-[var(--color-acc)]"
-                    >
-                      {e.token_symbol}
-                    </a>
-                  </td>
-                  <td class="mono px-3 py-2 text-[12px]">{eventTypeLabel(e.event_type)}</td>
-                  <td class="px-3 py-2">{e.title}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      withBaseline.length === 0 && (
+        <p class="mb-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-300">
+          ⚠️ 当前没有「有历史基准」的未来事件。原因：上币由交易所即时公告、不会提前出现；解锁与宏观事件尚未接入（见 TODO B1）。
+          下面的列表因此还只是「项目活动」，参考价值有限。
+        </p>
       )
     }
+
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13px]">
+        <thead>
+          <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+            <th class="px-3 py-2 text-left">信号</th>
+            <th class="px-3 py-2 text-left">倒计时</th>
+            <th class="px-3 py-2 text-left">时间 (UTC)</th>
+            <th class="px-3 py-2 text-left">代币</th>
+            <th class="px-3 py-2 text-left">类型</th>
+            <th class="px-3 py-2 text-left">标题</th>
+            <th class="px-3 py-2 text-left">该类历史</th>
+          </tr>
+        </thead>
+        <tbody>
+          {upcoming.map((e) => {
+            const tier = TIER_LABEL[SIGNAL_RANK[e.event_type] ?? 5]!;
+            const st = statByType.get(e.event_type);
+            return (
+              <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
+                <td class="px-3 py-2">
+                  <span class={`rounded px-2 py-[1px] text-[11px] font-semibold ${tier.cls}`}>
+                    {tier.text}
+                  </span>
+                </td>
+                <td class="mono px-3 py-2 text-amber-400">{daysUntil(e.t0)}</td>
+                <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                  {fmtTs(e.t0)}
+                </td>
+                <td class="px-3 py-2 font-semibold">
+                  <a
+                    href={`/event/${e.id}`}
+                    class="no-underline text-[var(--color-fg)] hover:text-[var(--color-acc)]"
+                  >
+                    {e.token_symbol}
+                  </a>
+                </td>
+                <td class="mono px-3 py-2 text-[12px]">{eventTypeLabel(e.event_type)}</td>
+                <td class="px-3 py-2">{e.title}</td>
+                <td class="mono px-3 py-2 text-[11px] text-[var(--color-mut)]">
+                  {st
+                    ? `1h 中位 ${pct(st.med1h)} · 上涨 ${st.pos4h == null ? "—" : Math.round(st.pos4h * 100) + "%"}（N=${st.n}）`
+                    : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">

@@ -9,6 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EVENTS_V1_COLUMNS, TOKENS_V1_COLUMNS } from "../src/index";
 import {
+  CATEGORY_STATS_V1_COLUMNS,
   EVENT_BASELINE_V1_COLUMNS,
   EVENT_COHORT_V1_COLUMNS,
   EVENT_TYPE_STATS_V1_COLUMNS,
@@ -106,6 +107,12 @@ describe("契约：api.* 视图列与 zod schema 一致", () => {
   it("api.event_baseline_v1", () => {
     expect(extractViewColumns(SQL, "api.event_baseline_v1")).toEqual([
       ...EVENT_BASELINE_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.category_stats_v1", () => {
+    expect(extractViewColumns(SQL, "api.category_stats_v1")).toEqual([
+      ...CATEGORY_STATS_V1_COLUMNS,
     ]);
   });
 });

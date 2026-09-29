@@ -22,7 +22,8 @@
     "preview": "tsx scripts/preview.ts",
     "backfill": "tsx scripts/backfill-candles.ts",
     "reactions": "tsx scripts/compute-reactions.ts",
-    "backfill:events": "tsx scripts/backfill-events.ts"
+    "backfill:events": "tsx scripts/backfill-events.ts",
+    "classify": "tsx scripts/classify.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

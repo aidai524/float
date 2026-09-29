@@ -8,19 +8,28 @@ import type { JevClient } from "./client";
 /** 事件类型判定的 rubric（用于 Choice 的 criteria） */
 export const EVENT_TYPE_CRITERIA: Record<EventType, string | null> = {
   unlock_cliff: "A one-time large token release at a cliff/vesting date",
-  unlock_linear: "Ongoing or continuous token release/emission",
-  listing_cex: "A centralized exchange lists the token or pair",
-  listing_dex: "A DEX pool is created or the token is listed on a DEX",
+  unlock_linear: "Ongoing or continuous token release/emission/vesting",
   tge: "Token generation event / first tradable launch",
   airdrop: "Free token distribution to users",
-  upgrade: "Protocol or mainnet upgrade, hard fork",
+  burn: "Token burn, buyback, or supply reduction",
+  migration: "Token swap, migration, or contract upgrade of the token itself",
+  listing_cex: "A centralized exchange lists/trades the token, or adds new spot/margin pairs",
+  listing_dex: "A DEX pool is created or the token is listed on a DEX",
+  listing_futures: "A futures/perpetual contract for the token is launched",
+  delisting: "A token or pair is being delisted/removed from an exchange",
+  mainnet_launch: "Mainnet / L1 / L2 launch, or a new chain going live",
+  testnet: "Testnet activation, stressnet, or public test network milestone",
+  upgrade: "Protocol, mainnet, or node software upgrade / hard fork / activation",
   halving: "Block reward halving",
+  incentive: "Emissions program, staking rewards, incentives, or reward changes",
+  partnership: "Partnership, collaboration, or business announcement",
+  integration: "Integration, SDK/tooling support, or interoperability work",
+  governance: "Governance vote or proposal",
   macro_fomc: "Central bank interest-rate decision",
   macro_cpi: "Inflation / CPI data release",
   etf: "ETF approval or decision",
-  governance: "Governance vote or proposal",
   exploit: "Hack, exploit, or loss of funds",
-  unknown: "None of the above",
+  unknown: "None of the above, or not enough information",
 };
 
 export interface EventTypeJudgment {
@@ -69,6 +78,40 @@ export async function isSameEvent(
     },
   );
   return { same: a.noul >= 0.5, probability: a.noul };
+}
+
+/** 代币类别 rubric（用于 token 分类） */
+export const TOKEN_CATEGORY_CRITERIA = {
+  l1: "Layer 1 blockchain / smart contract platform",
+  l2: "Layer 2, rollup, or scaling solution",
+  defi: "DeFi protocol: DEX, lending, derivatives, yield",
+  rwa: "Real-world asset tokenization: tokenized stocks, ETFs, commodities, treasuries, real estate",
+  stablecoin: "Stablecoin or stable-value asset",
+  meme: "Meme coin or community-driven culture token",
+  gaming: "Gaming, metaverse, or NFT ecosystem token",
+  ai: "AI, compute, or data-network token",
+  infrastructure: "Oracles, storage, indexing, interoperability, middleware",
+  exchange: "Exchange, CeFi, or broker token",
+  privacy: "Privacy-focused currency or protocol",
+  payment: "Payment, remittance, or currency token",
+  other: "None of the above",
+} as const;
+
+export type TokenCategory = keyof typeof TOKEN_CATEGORY_CRITERIA;
+
+export const TOKEN_CATEGORY_IDS = Object.keys(TOKEN_CATEGORY_CRITERIA) as TokenCategory[];
+
+/** 代币类别判定（单条，可批量调用 ask 并行） */
+export function tokenCategoryQuestion(symbol: string, name: string | null) {
+  return {
+    type: "choice" as const,
+    instructions: {
+      symbol,
+      name: name ?? undefined,
+      question: "What category best describes this crypto asset?",
+    },
+    criteria: TOKEN_CATEGORY_CRITERIA,
+  };
 }
 
 /** 资产类别 rubric。RWA 包含代币化股票/ETF/商品/国债——属于 web3 场景，不排除。 */

@@ -14,18 +14,32 @@ export const AssetClassSchema = z.enum(["crypto", "rwa", "unknown"]);
 export type AssetClass = z.infer<typeof AssetClassSchema>;
 
 export const EventTypeSchema = z.enum([
+  // 供给
   "unlock_cliff",
   "unlock_linear",
-  "listing_cex",
-  "listing_dex",
   "tge",
   "airdrop",
+  "burn",
+  "migration",
+  // 上线
+  "listing_cex",
+  "listing_dex",
+  "listing_futures",
+  "delisting",
+  // 网络/协议
+  "mainnet_launch",
+  "testnet",
   "upgrade",
   "halving",
+  // 生态/运营
+  "incentive",
+  "partnership",
+  "integration",
+  "governance",
+  // 宏观/外生
   "macro_fomc",
   "macro_cpi",
   "etf",
-  "governance",
   "exploit",
   "unknown",
 ]);

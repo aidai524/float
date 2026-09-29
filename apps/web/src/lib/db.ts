@@ -3,7 +3,7 @@
  * 服务端使用（构建期 / SSR），密钥只走服务端。
  */
 import { createClient } from "@supabase/supabase-js";
-import type { Candle, EventTypeStatsV1, EventV1, TokenV1 } from "./types";
+import type { Candle, CategoryStatsV1, EventTypeStatsV1, EventV1, TokenV1 } from "./types";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,6 +49,21 @@ export async function listTypeStats(minN = 5): Promise<EventTypeStatsV1[]> {
     .order("n", { ascending: false });
   if (error) throw error;
   return (data ?? []) as EventTypeStatsV1[];
+}
+
+/** 按代币类别的基准（默认只看某个事件类型） */
+export async function listCategoryStats(
+  eventType = "listing_cex",
+  minN = 10,
+): Promise<CategoryStatsV1[]> {
+  const { data, error } = await api
+    .from("category_stats_v1")
+    .select("*")
+    .eq("event_type", eventType)
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as CategoryStatsV1[];
 }
 
 /** 某事件在同类中的百分位 */

@@ -83,6 +83,27 @@ export interface EventTypeStatsV1 {
   pos_24h: number | null;
 }
 
+/** api.category_stats_v1 —— 按（事件类型 × 代币类别）的基准 */
+export interface CategoryStatsV1 {
+  event_type: string;
+  token_category: string;
+  n: number;
+  n_5m: number;
+  n_1h: number;
+  n_4h: number;
+  n_24h: number;
+  median_5m: number | null;
+  median_15m: number | null;
+  median_1h: number | null;
+  median_4h: number | null;
+  median_24h: number | null;
+  pos_5m: number | null;
+  pos_15m: number | null;
+  pos_1h: number | null;
+  pos_4h: number | null;
+  pos_24h: number | null;
+}
+
 /** api.event_baseline_v1 —— 事件在同类中的百分位 */
 export interface EventBaselineV1 {
   event_id: number;

@@ -1,0 +1,77 @@
+---
+import type { CategoryStatsV1 } from "../lib/types";
+import { eventTypeLabel } from "../lib/format";
+
+interface Props {
+  stats: CategoryStatsV1[];
+  eventType: string;
+}
+const { stats, eventType } = Astro.props;
+
+const CATEGORY_LABEL: Record<string, string> = {
+  l1: "L1 公链",
+  l2: "L2 / 扩容",
+  defi: "DeFi",
+  rwa: "RWA 代币化",
+  stablecoin: "稳定币",
+  meme: "Meme",
+  gaming: "游戏 / NFT",
+  ai: "AI / 算力",
+  infrastructure: "基础设施",
+  exchange: "交易所",
+  privacy: "隐私",
+  payment: "支付",
+  other: "其他",
+};
+
+const p = (v: number | null) =>
+  v == null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%`;
+const pCls = (v: number | null) =>
+  v == null ? "text-slate-600" : v >= 0 ? "text-emerald-400" : "text-red-400";
+const posPct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+const th =
+  "px-3 py-2 text-left text-[11px] uppercase tracking-wide text-[var(--color-mut)] font-semibold whitespace-nowrap";
+const td = "px-3 py-2 border-b border-[var(--color-line)]";
+---
+<section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+  <h2 class="m-0 text-[13px] font-semibold">
+    按代币类别看「{eventTypeLabel(eventType)}」· 是不是所有币都一样？
+  </h2>
+  <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+    代币类别由 Jev（System One）判定。同样的事件，不同类别的反应差别很大。
+  </p>
+
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-[13px]">
+      <thead>
+        <tr>
+          <th class={th}>代币类别</th>
+          <th class={`${th} text-right`}>样本 N</th>
+          <th class={`${th} text-right`}>5m 中位</th>
+          <th class={`${th} text-right`}>1h 中位</th>
+          <th class={`${th} text-right`}>4h 中位</th>
+          <th class={`${th} text-right`}>24h 中位</th>
+          <th class={`${th} text-right`}>4h 上涨占比</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          stats.map((s) => (
+            <tr class="hover:bg-[#16223c]">
+              <td class={td}>{CATEGORY_LABEL[s.token_category] ?? s.token_category}</td>
+              <td class={`${td} mono text-right ${s.n < 20 ? "text-amber-400" : ""}`}>{s.n}</td>
+              <td class={`${td} mono text-right ${pCls(s.median_5m)}`}>{p(s.median_5m)}</td>
+              <td class={`${td} mono text-right ${pCls(s.median_1h)}`}>{p(s.median_1h)}</td>
+              <td class={`${td} mono text-right ${pCls(s.median_4h)}`}>{p(s.median_4h)}</td>
+              <td class={`${td} mono text-right ${pCls(s.median_24h)}`}>{p(s.median_24h)}</td>
+              <td class={`${td} mono text-right text-[var(--color-mut)]`}>{posPct(s.pos_4h)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="mb-0 mt-3 text-[11px] text-[var(--color-mut)]">
+    N &lt; 20 标橙，样本不足，不要当结论。
+  </p>
+</section>
