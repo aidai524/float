@@ -42,6 +42,7 @@ export const EventV1Schema = z.object({
   magnitude_usd: z.number().nullable(),
   magnitude_pct: z.number().nullable(),
   title: z.string().nullable(),
+  source_url: z.string().nullable(),
   category: z.string(),
   asset_class: AssetClassSchema,
   confidence: z.number(),

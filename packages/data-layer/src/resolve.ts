@@ -118,6 +118,7 @@ export async function resolveEvents(
           magnitude_usd: mergeField<number>(recs, priority, "magnitude_usd"),
           magnitude_pct: mergeField<number>(recs, priority, "magnitude_pct"),
           title: (primary.detail as any)?.title ?? null,
+          source_url: primary.source_url,
           detail: Object.assign({}, ...recs.map((r) => r.detail ?? {}), {
             category: (primary.detail as any)?.category,
           }),

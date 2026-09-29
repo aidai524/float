@@ -19,7 +19,8 @@
     "ingest:dryrun": "tsx scripts/ingest-dryrun.ts",
     "ingest": "tsx scripts/ingest.ts",
     "enrich": "tsx scripts/enrich.ts",
-    "preview": "tsx scripts/preview.ts"
+    "preview": "tsx scripts/preview.ts",
+    "backfill": "tsx scripts/backfill-candles.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
