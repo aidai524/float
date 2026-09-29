@@ -23,8 +23,13 @@
  *   sudo apt-get install -y xvfb
  *   xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful
  *
- * Arch / 非官方支持的系统：
- *   官方构建常装不上（spawn ENOENT）。直接用系统 Chromium：
+ * Arch / Alpine / 非官方支持的系统：
+ *   Playwright/Patchright 的官方 Chromium 是 glibc 构建，在 musl 的 Alpine 上跑不了
+ *   （下载也会失败，报 spawn ENOENT）。用系统 Chromium：
+ *     # Alpine
+ *     apk add --no-cache chromium xvfb fontconfig ttf-dejavu
+ *     CHROME_PATH=/usr/bin/chromium node scripts/fetch-defillama-browser.mjs
+ *     # Arch
  *     sudo pacman -S --needed chromium xorg-server-xvfb
  *     CHROME_PATH=/usr/bin/chromium node scripts/fetch-defillama-browser.mjs
  *   root 运行时脚本会自动加 --no-sandbox。
@@ -68,7 +73,7 @@ async function attempt(mod, { engine, headless }) {
   process.stdout.write(`→ ${label} … `);
   let browser;
   try {
-    const launchArgs = ["--disable-blink-features=AutomationControlled"];
+    const launchArgs = ["--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"];
     // 以 root 跑 Chromium 必须加 --no-sandbox，否则直接拒绝启动
     if (typeof process.getuid === "function" && process.getuid() === 0) {
       launchArgs.push("--no-sandbox", "--disable-setuid-sandbox");
@@ -145,10 +150,13 @@ for (const s of strategies()) {
 if (!won) {
   console.error(
     "\n所有策略都失败。下一步：\n" +
-      "  1) 安装 patchright：pnpm add -D patchright && pnpm exec patchright install chromium\n" +
-      "  2) 有头模式：sudo apt-get install -y xvfb && xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful\n" +
-      "  3) 仍不行 → 住宅代理，或回退到本机浏览器快照后 scp 到 VPS\n" +
-      "  4) 非 Debian 系统缺共享库 → 装系统依赖，或用 CHROME_PATH=/usr/bin/chromium",
+      "  · Debian/Ubuntu: apt-get install -y chromium xvfb\n" +
+      "  · Alpine:        apk add --no-cache chromium xvfb fontconfig ttf-dejavu\n" +
+      "  · Arch:          pacman -S --needed chromium xorg-server-xvfb\n" +
+      "  然后用系统 Chromium：\n" +
+      "    CHROME_PATH=/usr/bin/chromium node scripts/fetch-defillama-browser.mjs\n" +
+      "    # headless 被质询再加有头：CHROME_PATH=/usr/bin/chromium xvfb-run -a … --headful\n" +
+      "  仍不行 → 住宅代理，或回退到本机浏览器快照后 scp 到 VPS",
   );
   process.exit(1);
 }
