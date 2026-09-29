@@ -25,14 +25,9 @@ insert into data_sources (id, type, auth, cost_tier, priority, rate_limit, refre
 
 -- 4) CoinMarketCal —— 上币 / 解锁事件（Tier A，Free 档）
 ('coinmarketcal', 'listing', 'header', 'free', 40,
- '{"rpm": 60, "dailyQuota": 5000}', '1h', '{}',
- '{"base_url":"https://api.coinmarketcal.com","auth":{"type":"header","name":"x-api-key","env":"COINMARKETCAL_API_KEY"},
-   "kind":"event","path":"/v1/events","list_path":"$.body",
-   "pagination":{"type":"page","param":"page","size_param":"max","size":100},
-   "map":{"ext_id":"$.id","token_symbol":"$.coins[0].symbol","t0":"$.date_event",
-          "source_url":"$.proof","title":"$.title",
-          "event_type":{"from_category":true},"t0_confidence":{"const":"high"}},
-   "dedupe":["event_type","token_symbol","t0"]}'),
+ '{"rpm": 60, "dailyQuota": 5000}', '6h', '{}',
+ '{"base_url":"https://api.coinmarketcal.com","path":"/v2/events","per_page":20,"max_pages":5,
+   "auth":{"type":"header","name":"x-api-key","env":"COINMARKETCAL_API_KEY"}}'),
 
 -- 5) CryptoPanic —— 新闻/情绪（Tier A）
 ('cryptopanic', 'news', 'query', 'free', 50,

@@ -48,6 +48,8 @@ export const EventV1Schema = z.object({
   confidence: z.number(),
   source_count: z.number().int(),
   base_price: z.number().nullable(),
+  base_ts: z.string().nullable(),
+  base_after_t0: z.boolean().nullable(),
   ret_5m: z.number().nullable(),
   ret_15m: z.number().nullable(),
   ret_1h: z.number().nullable(),

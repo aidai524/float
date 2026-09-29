@@ -159,15 +159,31 @@ async function main() {
 
   const statCards = [
     { label: "事件总数", value: String(rows.length) },
+    { label: "已测量反应", value: String(rows.filter((e: any) => e.ret_1h != null).length) },
     ...Object.entries(byClass).map(([k, v]) => ({ label: `asset_class · ${k}`, value: String(v) })),
     ...Object.entries(byType).map(([k, v]) => ({ label: `type · ${k}`, value: String(v) })),
     { label: useDaily ? "日线" : "1m 线", value: String(series.length) },
   ];
 
+  const pct = (v: number | null) =>
+    v == null
+      ? '<span class="nil">—</span>'
+      : `<span class="${v >= 0 ? "up" : "down"}">${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%</span>`;
+  const liqCell = (v: boolean | null) =>
+    v == null
+      ? '<span class="nil" title="基准历史不足，无法判定">?</span>'
+      : v
+        ? '<span class="ok">Y</span>'
+        : '<span class="warn" title="30 天日均成交额低于阈值">低</span>';
+
   const tableRows = rows
     .map(
       (e: any) => `<tr>
-      <td class="mono">${fmtTs(e.t0)}</td>
+      <td class="mono">${fmtTs(e.t0)}${
+        e.base_after_t0
+          ? '<span class="flag" title="T0 时还没有市场数据，基准取自 T0 之后">*</span>'
+          : ""
+      }</td>
       <td><strong>${esc(e.token_symbol)}</strong></td>
       <td><span class="badge" style="background:${ASSET_BADGE[e.asset_class] ?? "#64748b"}">${esc(
         e.asset_class,
@@ -181,8 +197,13 @@ async function main() {
             )} ↗</a>`
           : "—"
       }</td>
-      <td class="num">${e.ret_15m == null ? "—" : (e.ret_15m * 100).toFixed(2) + "%"}</td>
-      <td class="num">${e.source_count}</td>
+      <td class="num">${pct(e.ret_5m)}</td>
+      <td class="num">${pct(e.ret_15m)}</td>
+      <td class="num">${pct(e.ret_1h)}</td>
+      <td class="num">${pct(e.ret_4h)}</td>
+      <td class="num">${pct(e.ret_24h)}</td>
+      <td class="num">${e.vol_ratio == null ? '<span class="nil">—</span>' : e.vol_ratio.toFixed(2) + "×"}</td>
+      <td class="num">${liqCell(e.liquidity_ok)}</td>
       <td class="num">${Number(e.confidence).toFixed(2)}</td>
     </tr>`,
     )
@@ -220,6 +241,9 @@ async function main() {
   .lnk{color:var(--acc);text-decoration:none;white-space:nowrap}
   .lnk:hover{text-decoration:underline}
   .badge{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;color:#fff;font-weight:600}
+  .up{color:#34d399}.down{color:#f87171}.nil{color:#475569}
+  .ok{color:#34d399}.warn{color:#f59e0b}
+  .flag{color:#f59e0b;margin-left:2px;font-weight:700}
   footer{padding:16px 24px;color:var(--mut);font-size:11px;border-top:1px solid var(--line)}
 </style></head>
 <body>
@@ -251,17 +275,18 @@ async function main() {
 
   <div class="panel">
     <h2>事件（api.events_v1，最近 ${rows.length} 条）</h2>
-    <div class="sub">数据来源：Binance / Bybit 公开公告 API。每条事件的主源链接见「来源」列（events.source_url）。</div>
+    <div class="sub">数据来源：Binance / Bybit 公告 API、CoinMarketCal。反应口径 methodology v1：base = T0 前最近一根 1m 收盘；5m/15m/1h/4h/24h 为相对 base 的收益。标记 <span class="flag">*</span> 表示 T0 时尚无市场数据（如新币上线），基准取自 T0 之后；流动性 <span class="nil">?</span> 表示基准历史不足无法判定。</div>
     <table>
       <thead><tr>
         <th>T0 (UTC)</th><th>代币</th><th>资产类别</th><th>事件类型</th><th>标题</th><th>来源</th>
-        <th class="num">15m 反应</th><th class="num">源数</th><th class="num">置信度</th>
+        <th class="num">5m</th><th class="num">15m</th><th class="num">1h</th><th class="num">4h</th><th class="num">24h</th>
+        <th class="num">量比</th><th class="num">流动性</th><th class="num">置信度</th>
       </tr></thead>
-      <tbody>${tableRows || '<tr><td colspan="9" class="mut">暂无事件</td></tr>'}</tbody>
+      <tbody>${tableRows || '<tr><td colspan="14" class="mut">暂无事件</td></tr>'}</tbody>
     </table>
   </div>
 </main>
-<footer>基于历史市场数据，非 AI 生成 · 15m 反应列待 Phase 2 反应引擎填充 · 本页仅供内部预览，非投资建议</footer>
+<footer>基于历史市场数据，非 AI 生成 · 反应口径 methodology v1 · 本页仅供内部预览，非投资建议</footer>
 </body></html>`;
 
   const outDir = resolve(process.cwd(), "preview");
