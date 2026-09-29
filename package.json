@@ -18,7 +18,8 @@
     "devsession": "scripts/devsession.sh",
     "ingest:dryrun": "tsx scripts/ingest-dryrun.ts",
     "ingest": "tsx scripts/ingest.ts",
-    "enrich": "tsx scripts/enrich.ts"
+    "enrich": "tsx scripts/enrich.ts",
+    "preview": "tsx scripts/preview.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

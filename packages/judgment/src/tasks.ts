@@ -2,7 +2,7 @@
  * 领域判断任务：把 System One 的判断接入数据层。
  * 对应 DATA-LAYER.md：L1 事件分类、L2 实体解析、L4 可比事件重排。
  */
-import { EventTypeSchema, type EventType } from "@cee/shared";
+import { AssetClassSchema, EventTypeSchema, type AssetClass, type EventType } from "@cee/shared";
 import type { JevClient } from "./client";
 
 /** 事件类型判定的 rubric（用于 Choice 的 criteria） */
@@ -69,6 +69,38 @@ export async function isSameEvent(
     },
   );
   return { same: a.noul >= 0.5, probability: a.noul };
+}
+
+/** 资产类别 rubric。RWA 包含代币化股票/ETF/商品/国债——属于 web3 场景，不排除。 */
+export const ASSET_CLASS_CRITERIA: Record<AssetClass, string> = {
+  crypto: "A crypto-native token, protocol, or on-chain asset",
+  rwa: "A tokenized real-world asset: tokenized stocks, ETFs, commodities, treasuries, real estate",
+  unknown: "Cannot tell, or not an asset listing/trading announcement",
+};
+
+export interface AssetClassJudgment {
+  asset_class: AssetClass;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+/** 判定资产类别（crypto / rwa / unknown） */
+export async function classifyAssetClass(
+  client: JevClient,
+  state: unknown,
+): Promise<AssetClassJudgment> {
+  const a = await client.choice(
+    state,
+    "asset_class",
+    "What asset class does this announcement concern?",
+    ASSET_CLASS_CRITERIA,
+  );
+  const parsed = AssetClassSchema.safeParse(a.choice);
+  return {
+    asset_class: parsed.success ? parsed.data : "unknown",
+    confidence: a.confidence,
+    probabilities: a.probabilities,
+  };
 }
 
 export interface Judgment<T> {

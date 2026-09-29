@@ -42,6 +42,8 @@ cp .env.example .env          # 填入密钥（TypeSafe、Bark 等）
 | `pnpm lint` | ESLint |
 | `pnpm format` / `format:check` | Prettier |
 | `pnpm ingest [source]` | 真实采集写入 Supabase（可选指定源） |
+| `pnpm enrich [limit]` | Jev 富化：事件类型 + 资产类别（crypto/rwa） |
+| `pnpm preview` | 生成静态预览页 `preview/index.html` |
 | `pnpm ingest:dryrun` | 内存假 DB 验证采集路径 |
 | `scripts/db-migrate.sh` | 对云端 Supabase 应用迁移 + seed |
 | `scripts/devsession.sh start\|stop\|status` | 保持电脑清醒 + 屏幕压暗 |
@@ -99,8 +101,13 @@ tools/          # brightness（C）
 - [🚧] Phase 1：数据采集与统一事件库（解锁 + 上币）
   - [x] 云端 Supabase 建库 + 迁移 + 契约集成测试
   - [x] 真实 Binance 数据写入云端（500 根 K 线）
-  - [ ] CoinMarketCal 上币事件接入
+  - [x] Binance/Bybit 公告 → 上币事件（listing_cex）
+  - [x] Jev 富化：事件类型 + **asset_class（crypto / rwa）**
+  - [x] 静态预览页
   - [ ] 自建解锁精选库
   - [ ] resolveEvents 跨源去重端到端
+
+> **asset_class**：`crypto`（加密原生） / `rwa`（代币化股票、ETF、商品、国债） / `unknown`。
+> RWA 是 web3 的典型场景，**不排除**，单独归类。
 - [ ] Phase 2：反应计算引擎
 - [ ] Phase 3：MVP 前端（日历 + 事件详情）

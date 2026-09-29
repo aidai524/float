@@ -9,6 +9,10 @@ export const METHODOLOGY_VERSION = "v1" as const;
 export const T0ConfidenceSchema = z.enum(["high", "medium", "low"]);
 export type T0Confidence = z.infer<typeof T0ConfidenceSchema>;
 
+/** 资产类别：crypto 原生 vs 代币化的现实世界资产（RWA，含代币化股票） */
+export const AssetClassSchema = z.enum(["crypto", "rwa", "unknown"]);
+export type AssetClass = z.infer<typeof AssetClassSchema>;
+
 export const EventTypeSchema = z.enum([
   "unlock_cliff",
   "unlock_linear",
@@ -39,6 +43,7 @@ export const EventV1Schema = z.object({
   magnitude_pct: z.number().nullable(),
   title: z.string().nullable(),
   category: z.string(),
+  asset_class: AssetClassSchema,
   confidence: z.number(),
   source_count: z.number().int(),
   base_price: z.number().nullable(),

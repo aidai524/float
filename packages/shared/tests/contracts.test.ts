@@ -1,19 +1,22 @@
 /**
  * 契约测试（无需数据库）：
- * 解析 0004_contract_views.sql，提取 api.* 视图的列，和 zod schema 比对。
- * 任何一侧改了列形状而另一侧没同步 → CI 失败。
+ * 扫描 supabase/migrations/*.sql，取每个 api.* 视图的**最后一次**定义，
+ * 提取列并与 zod schema 比对。任一侧改了列形状而另一侧没同步 → CI 失败。
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { EVENTS_V1_COLUMNS, TOKENS_V1_COLUMNS } from "../src/index";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SQL = readFileSync(
-  resolve(here, "../../../supabase/migrations/0004_contract_views.sql"),
-  "utf8",
-);
+const migrationsDir = resolve(here, "../../../supabase/migrations");
+
+const SQL = readdirSync(migrationsDir)
+  .filter((f) => f.endsWith(".sql"))
+  .sort()
+  .map((f) => readFileSync(join(migrationsDir, f), "utf8"))
+  .join("\n\n");
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -45,19 +48,20 @@ function aliasOf(expr: string): string | null {
   return idMatch ? (idMatch[1] ?? null) : null;
 }
 
+/** 取视图最后一次定义的 select 列表 */
 function extractViewColumns(sql: string, viewName: string): string[] {
   const re = new RegExp(
     `create\\s+or\\s+replace\\s+view\\s+${escapeRe(viewName)}\\s+as\\s*select([\\s\\S]*?)\\nfrom\\s`,
-    "i",
+    "gi",
   );
-  const m = sql.match(re);
-  if (!m?.[1]) throw new Error(`view not found in SQL: ${viewName}`);
+  const matches = [...sql.matchAll(re)];
+  const last = matches[matches.length - 1];
+  if (!last?.[1]) throw new Error(`view not found in SQL: ${viewName}`);
   const cols: string[] = [];
-  for (const part of splitTopLevel(m[1])) {
+  for (const part of splitTopLevel(last[1])) {
     const expr = part.trim();
-    if (!expr) continue;
+    if (!expr || expr.startsWith("--")) continue;
     if (expr.endsWith(".*")) {
-      // v.* → 展开为 events_v1 全部列
       cols.push(...extractViewColumns(sql, "api.events_v1"));
       continue;
     }
@@ -69,17 +73,18 @@ function extractViewColumns(sql: string, viewName: string): string[] {
 
 describe("契约：api.* 视图列与 zod schema 一致", () => {
   it("api.events_v1", () => {
-    const cols = extractViewColumns(SQL, "api.events_v1");
-    expect(cols).toEqual([...EVENTS_V1_COLUMNS]);
+    expect(extractViewColumns(SQL, "api.events_v1")).toEqual([...EVENTS_V1_COLUMNS]);
   });
 
   it("api.event_detail_v1 = events_v1 + 溯源", () => {
-    const cols = extractViewColumns(SQL, "api.event_detail_v1");
-    expect(cols).toEqual([...EVENTS_V1_COLUMNS, "provenance_count", "sources"]);
+    expect(extractViewColumns(SQL, "api.event_detail_v1")).toEqual([
+      ...EVENTS_V1_COLUMNS,
+      "provenance_count",
+      "sources",
+    ]);
   });
 
   it("api.tokens_v1", () => {
-    const cols = extractViewColumns(SQL, "api.tokens_v1");
-    expect(cols).toEqual([...TOKENS_V1_COLUMNS]);
+    expect(extractViewColumns(SQL, "api.tokens_v1")).toEqual([...TOKENS_V1_COLUMNS]);
   });
 });

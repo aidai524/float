@@ -1,5 +1,6 @@
 /** 读侧契约：与 api.tokens_v1 列一一对应。 */
 import { z } from "zod";
+import { AssetClassSchema } from "./events";
 
 export const TokenV1Schema = z.object({
   id: z.number().int(),
@@ -7,6 +8,7 @@ export const TokenV1Schema = z.object({
   name: z.string().nullable(),
   chain: z.string().nullable(),
   category: z.string().nullable(),
+  asset_class: AssetClassSchema,
   market_cap: z.number().nullable(),
   adv_30d: z.number().nullable(),
   event_count: z.number().int(),

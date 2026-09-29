@@ -28,3 +28,6 @@ coverage/
 supabase/.branches/
 supabase/.temp/
 .supabase-db-pass.txt
+
+# 生成的预览页
+preview/
