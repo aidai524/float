@@ -66,31 +66,33 @@ scripts/install-daily-cron.sh status
 
 ## 7. DefiLlama 解锁快照（需要浏览器）
 
-`defillama.com` 服务器取不到，只能用无头浏览器。**解锁是排期的**，几周跑一次即可。
+`defillama.com` 服务器取不到，只能用真实浏览器。**解锁是排期的**，几周跑一次即可。
+
+实测可用组合（Alpine + 系统 Chromium）：**`patchright` + headless**，无需 xvfb。
+注意 Playwright/Patchright 官方的 glibc 构建在 musl 的 Alpine 上装不上，必须用系统 Chromium。
 
 ```bash
-# 至少装一个引擎；patchright 是反检测分支，成功率更高（建议都装）
-pnpm add -D playwright
-pnpm exec playwright install --with-deps chromium
+# 1) JS 引擎（二选一；patchright 反检测更强）
+#    Alpine 用 npm/pnpm 装 JS 包即可，不需要 install chromium
 pnpm add -D patchright
-pnpm exec patchright install --with-deps chromium
 
-# 一条命令依次试：patchright/playwright × headless/headful，成功即止
-node scripts/fetch-defillama-browser.mjs
+# 2) 系统浏览器 + 字体（Alpine）
+apk add --no-cache chromium fontconfig ttf-dejavu
+#    Debian/Ubuntu: apt-get install -y chromium；Arch: pacman -S chromium
 
-# 若 headless 全被质询，用有头 + xvfb（指纹最真，成功率最高）
-sudo apt-get install -y xvfb
-xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful
+# 3) 取快照（脚本依次试 patchright/playwright × headless/headful）
+CHROME_PATH=/usr/bin/chromium node scripts/fetch-defillama-browser.mjs
+#    若 headless 被质询：apk add xvfb && CHROME_PATH=/usr/bin/chromium xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful
 
-# 成功后回填
+# 4) 回填（解析用 psql 避开 PostgREST 8s 超时）
+apk add --no-cache postgresql-client
 pnpm unlocks:import
 ```
 
-若想每周自动跑，加一条 cron：
+每周自动跑：
 
 ```bash
-# 每周一 02:00：取快照 → 回填
-( crontab -l; echo '0 2 * * 1 cd '"$PWD"' && PATH="/usr/local/bin:/usr/bin:/bin:$(dirname $(command -v node))" xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful && pnpm unlocks:import >> .devsession/unlocks.log 2>&1 # float-unlocks' ) | crontab -
+( crontab -l; echo '0 2 * * 1 cd '"$PWD"' && export PATH="$(dirname $(command -v node)):/usr/local/bin:/usr/bin:/bin" CHROME_PATH=/usr/bin/chromium && node scripts/fetch-defillama-browser.mjs && pnpm unlocks:import >> .devsession/unlocks.log 2>&1 # float-unlocks' ) | crontab -
 ```
 
 ## 各部分跑在哪（现状）
@@ -106,5 +108,7 @@ pnpm unlocks:import
 
 - **Binance 451** → VPS 区域在美国，换区。
 - **cron 找不到 pnpm/node** → `install-daily-cron.sh` 已注入 PATH；手工改 crontab 时记得带。
+- **Alpine 上浏览器 spawn ENOENT** → Playwright 官方 Chromium 是 glibc 构建，musl 跑不了；用 `CHROME_PATH=/usr/bin/chromium` + `apk add chromium`。
+- **`pnpm unlocks:import` 解析超时** → 装 `postgresql-client`，脚本会走 psql（PostgREST 有 8s 语句超时）。
 - **浏览器被 Cloudflare 挡** → 脚本会自动依次试 patchright/playwright × headless/headful；再不行用 `--headful` + xvfb；仍不行则回退到本机浏览器快照后 `scp` 到 VPS。
 - **时区**：cron 按 VPS 本地时区。`timedatectl` 设 `UTC` 最省心。
