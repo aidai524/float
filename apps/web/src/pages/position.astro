@@ -1,0 +1,72 @@
+---
+import Layout from "../layouts/Layout.astro";
+import PositionCalculator from "../components/PositionCalculator";
+import { listEvents } from "../lib/db";
+import { eventTypeLabel, fmtPrice } from "../lib/format";
+
+const events = await listEvents(1200);
+
+// 按事件类型聚合：隐含 24h 波动 + 最大回撤分布
+// 注意：剔除已知低流动性（否则微盘币的极端崩盘会主导分布）
+const cohorts = (() => {
+  const acc = new Map<string, { imp: number[]; dd: number[] }>();
+  for (const e of events) {
+    if (e.liquidity_ok === false) continue;
+    const rec = acc.get(e.event_type) ?? { imp: [], dd: [] };
+    if (e.implied_move_24h != null) rec.imp.push(e.implied_move_24h);
+    if (e.max_drawdown != null) rec.dd.push(e.max_drawdown);
+    acc.set(e.event_type, rec);
+  }
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  const q = (xs: number[], p: number) => {
+    if (!xs.length) return null;
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(s.length * p))] ?? null;
+  };
+  const MACRO_FIRST = (t: string) => (t.startsWith("macro") ? 0 : 1);
+  return [...acc.entries()]
+    .filter(([, v]) => v.dd.length >= 10)
+    .map(([type, v]) => ({
+      event_type: type,
+      label: eventTypeLabel(type),
+      n: v.dd.length,
+      implied24h: avg(v.imp),
+      ddP10: q(v.dd, 0.1),
+      ddP25: q(v.dd, 0.25),
+      ddMedian: q(v.dd, 0.5),
+    }))
+    .sort((a, b) => MACRO_FIRST(a.event_type) - MACRO_FIRST(b.event_type) || b.n - a.n);
+})();
+
+// 默认入场价：最近一根 BTC 日线收盘
+const btc = events.find((e) => e.token_symbol === "BTC" && e.base_price != null);
+const defaultEntry = btc?.base_price ?? 0;
+---
+<Layout title="仓位计算器" subtitle="按历史分布与隐含波动定仓位">
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">仓位计算器</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+    不是普通的风险计算器——**止损距离来自同类事件的历史分布或事件前的隐含波动**，
+    所以仓位是"按这类事件通常有多剧烈"倒推出来的，而不是拍一个百分比。
+  </p>
+
+  <PositionCalculator
+    cohorts={cohorts}
+    defaultEntry={Number(defaultEntry.toFixed(2))}
+    client:load
+  />
+
+  <section class="mt-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4 text-[12px] text-[var(--color-mut)]">
+    <div class="mb-2 font-semibold text-[var(--color-fg)]">公式</div>
+    <pre class="mono m-0 overflow-x-auto text-[11px] leading-relaxed">
+止损距离 = |历史最大回撤 10 分位|  或  事件前隐含 24h 波动
+名义敞口 = 风险预算 / 止损距离
+币数量   = 名义敞口 / 入场价
+保证金   = 名义敞口 / 杠杆
+强平价（逐仓多单）≈ 入场价 × (1 − 1/杠杆 + 维持保证金率)
+</pre>
+    <p class="mb-0 mt-2">
+      默认入场价来自最近事件的基准价（{fmtPrice(defaultEntry)}）。
+      隐含波动只在 BTC / ETH 上可得（Deribit DVOL），其他事件类型用历史回撤分位。
+    </p>
+  </section>
+</Layout>
