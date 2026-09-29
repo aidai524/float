@@ -92,7 +92,8 @@ pnpm unlocks:import
 每周自动跑：
 
 ```bash
-( crontab -l; echo '0 2 * * 1 cd '"$PWD"' && export PATH="$(dirname $(command -v node)):/usr/local/bin:/usr/bin:/bin" CHROME_PATH=/usr/bin/chromium && node scripts/fetch-defillama-browser.mjs && pnpm unlocks:import >> .devsession/unlocks.log 2>&1 # float-unlocks' ) | crontab -
+scripts/install-unlocks-cron.sh install 1 02:00    # 每周一 02:00
+scripts/install-unlocks-cron.sh status
 ```
 
 ## 各部分跑在哪（现状）
