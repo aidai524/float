@@ -9,6 +9,7 @@ import { binanceAdapter } from "./sources/binance";
 import { binanceAnnouncementsAdapter, bybitAnnouncementsAdapter } from "./sources/announcements";
 import { coinMarketCalAdapter } from "./sources/coinmarketcal";
 import { coinMarketCapUnlocksAdapter } from "./sources/coinmarketcap-unlocks";
+import { defiLlamaUnlocksAdapter } from "./sources/defillama-unlocks";
 import { fredMacroAdapter } from "./sources/fred-macro";
 import { fedFomcAdapter } from "./sources/fed-fomc";
 
@@ -34,5 +35,6 @@ register(binanceAnnouncementsAdapter);
 register(bybitAnnouncementsAdapter);
 register(coinMarketCalAdapter);
 register(coinMarketCapUnlocksAdapter);
+register(defiLlamaUnlocksAdapter);
 register(fredMacroAdapter);
 register(fedFomcAdapter);

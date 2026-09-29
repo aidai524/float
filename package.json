@@ -25,7 +25,8 @@
     "backfill:events": "tsx scripts/backfill-events.ts",
     "classify": "tsx scripts/classify.ts",
     "backfill:dvol": "tsx scripts/backfill-dvol.ts",
-    "daily": "tsx scripts/daily-refresh.ts"
+    "daily": "tsx scripts/daily-refresh.ts",
+    "unlocks:import": "tsx scripts/backfill-unlocks.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
