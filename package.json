@@ -24,7 +24,8 @@
     "reactions": "tsx scripts/compute-reactions.ts",
     "backfill:events": "tsx scripts/backfill-events.ts",
     "classify": "tsx scripts/classify.ts",
-    "backfill:dvol": "tsx scripts/backfill-dvol.ts"
+    "backfill:dvol": "tsx scripts/backfill-dvol.ts",
+    "daily": "tsx scripts/daily-refresh.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
