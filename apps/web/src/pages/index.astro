@@ -98,6 +98,38 @@ const otherUp = upcomingAll.filter(
 // 兼容旧变量名
 
 const measured = events.filter((e) => e.ret_1h != null).length;
+
+// ---- 预期 vs 实际（惊讶度）----
+const surpriseStats = (() => {
+  const byType = new Map<string, { s: number[]; imp: number[] }>();
+  for (const e of events) {
+    const rec = byType.get(e.event_type) ?? { s: [], imp: [] };
+    if (e.surprise_24h != null) rec.s.push(e.surprise_24h);
+    if (e.implied_move_24h != null) rec.imp.push(e.implied_move_24h);
+    byType.set(e.event_type, rec);
+  }
+  const med = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m]! : ((s[m - 1]! + s[m]!) / 2);
+  };
+  const q = (xs: number[], p: number) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.floor(s.length * p))] ?? null;
+  };
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+  return [...byType.entries()]
+    .filter(([, v]) => v.s.length >= 10)
+    .map(([type, v]) => ({
+      type,
+      n: v.s.length,
+      implied24h: avg(v.imp),
+      medianSurprise: med(v.s),
+      meanSurprise: avg(v.s),
+      p90Surprise: q(v.s, 0.9),
+    }))
+    .sort((a, b) => b.n - a.n);
+})();
 const maxN = stats.reduce((a, s) => Math.max(a, s.n), 0);
 const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
 
@@ -142,6 +174,61 @@ const daysUntil = (t: string) => {
   <div class="mb-5">
     <CategoryPanel stats={catStats} eventType="listing_cex" />
   </div>
+
+  <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <h2 class="m-0 text-[13px] font-semibold">预期 vs 实际 · 市场定价得准不准</h2>
+    <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+      隐含幅度来自 Deribit DVOL（事件前的年化隐含波动率）× √窗口；惊讶度 = 实际最大偏离 / 隐含幅度。
+      <strong>&gt; 1 表示市场低估了波动，&lt; 1 表示市场已充分定价。</strong>
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13px]">
+        <thead>
+          <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+            <th class="px-3 py-2 text-left">事件类型</th>
+            <th class="px-3 py-2 text-right">样本 N</th>
+            <th class="px-3 py-2 text-right">隐含 24h</th>
+            <th class="px-3 py-2 text-right">惊讶中位</th>
+            <th class="px-3 py-2 text-right">惊讶均值</th>
+            <th class="px-3 py-2 text-right">惊讶 90 分位</th>
+            <th class="px-3 py-2 text-left">读数</th>
+          </tr>
+        </thead>
+        <tbody>
+          {surpriseStats.map((s) => (
+            <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
+              <td class="px-3 py-2">{eventTypeLabel(s.type)}</td>
+              <td class="mono px-3 py-2 text-right">{s.n}</td>
+              <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                {s.implied24h == null ? "—" : `${(s.implied24h * 100).toFixed(2)}%`}
+              </td>
+              <td
+                class={`mono px-3 py-2 text-right font-semibold ${s.medianSurprise != null && s.medianSurprise > 1 ? "text-amber-400" : "text-emerald-400"}`}
+              >
+                {s.medianSurprise?.toFixed(2)}×
+              </td>
+              <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                {s.meanSurprise?.toFixed(2)}×
+              </td>
+              <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                {s.p90Surprise?.toFixed(2)}×
+              </td>
+              <td class="px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                {s.medianSurprise != null && s.medianSurprise > 1.15
+                  ? "市场系统性低估波动"
+                  : s.medianSurprise != null && s.medianSurprise < 0.85
+                    ? "市场系统性高估波动"
+                    : "定价基本合理"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mb-0 mt-3 text-[11px] text-[var(--color-mut)]">
+      仅 BTC / ETH 有 DVOL，所以只有宏观事件能算惊讶度；上币与解锁暂缺隐含波动定价。
+    </p>
+  </section>
 
   <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
     <h2 class="m-0 text-[13px] font-semibold">接下来 {horizonDays} 天</h2>

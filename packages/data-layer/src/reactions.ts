@@ -10,6 +10,8 @@
  *   adv_30d = 事件前 30 天日均成交额（USD），用于流动性过滤
  */
 
+import { computeSurprise, volAt, type SurpriseSet, type VolPoint } from "./implied";
+
 export const METHODOLOGY_VERSION = "v1";
 
 /** 收益/波动的时间窗（分钟） */
@@ -39,7 +41,7 @@ export interface Candle {
   volume: number;
 }
 
-export interface ReactionMetrics {
+export interface ReactionMetrics extends SurpriseSet {
   priceSource: string;
   basePrice: number;
   baseTs: number;
@@ -65,6 +67,8 @@ export interface ComputeOptions {
   priceSource: string;
   advThresholdUsd?: number;
   methodologyVersion?: string;
+  /** 事件前的隐含波动率序列（如 DVOL），用于算惊讶度 */
+  impliedVol?: VolPoint[] | null;
 }
 
 function sortByTs(candles: Candle[]): Candle[] {
@@ -209,6 +213,18 @@ export function computeReactions(
   const coverageDays = hr.length ? (anchor - hr[0]!.ts) / DAY_MS : 0;
   const liquidityOk = coverageDays >= MIN_BASELINE_DAYS ? adv >= threshold : null;
 
+  // ---- 预期 vs 实际 ----
+  // 窗口内相对 base 的最大绝对偏离（取涨/跌两侧的较大者）
+  const excursionOf = (minutes: number): number | null => {
+    const w = windowInclusive(m1, anchor, anchor + minutes * MINUTE);
+    if (!w.length) return null;
+    const hi = Math.max(...w.map((c) => c.high)) / basePrice - 1;
+    const lo = Math.min(...w.map((c) => c.low)) / basePrice - 1;
+    return Math.max(Math.abs(hi), Math.abs(lo));
+  };
+  const dvolPoint = opts.impliedVol?.length ? volAt(opts.impliedVol, t0 - MINUTE) : null;
+  const surprise = computeSurprise(dvolPoint?.value ?? null, excursionOf);
+
   return {
     priceSource: opts.priceSource,
     basePrice,
@@ -226,6 +242,7 @@ export function computeReactions(
     maxFavorable,
     adv30d: adv,
     liquidityOk,
+    ...surprise,
     methodologyVersion: opts.methodologyVersion ?? METHODOLOGY_VERSION,
   };
 }

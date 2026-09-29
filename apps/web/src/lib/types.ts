@@ -33,6 +33,12 @@ export interface EventV1 {
   max_drawdown: number | null;
   max_favorable: number | null;
   liquidity_ok: boolean | null;
+  implied_move_1h: number | null;
+  implied_move_4h: number | null;
+  implied_move_24h: number | null;
+  surprise_1h: number | null;
+  surprise_4h: number | null;
+  surprise_24h: number | null;
   price_source: string | null;
   methodology_version: string;
   source_detail: Record<string, unknown>;

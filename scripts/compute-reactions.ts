@@ -14,6 +14,7 @@ import {
   DAY_MS,
   type Candle,
 } from "../packages/data-layer/src/reactions";
+import type { VolPoint } from "../packages/data-layer/src/implied";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,6 +26,8 @@ const db = createClient(url, key, { auth: { persistSession: false } });
 
 const SOURCE = "binance";
 const BINANCE = "https://api.binance.com";
+/** 有 DVOL 的币种（Deribit 只提供 BTC / ETH 的波动率指数） */
+const DVOL_CURRENCIES = new Set(["BTC", "ETH"]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const argLimit = (() => {
@@ -40,6 +43,12 @@ const minAgeHours = (() => {
 
 /** 回填场景不落 K 线，避免撑爆免费额度 */
 const noStore = process.argv.includes("--no-store");
+
+/** 只算指定事件类型前缀（如 --type macro / unlock / listing） */
+const typeFilter = (() => {
+  const i = process.argv.indexOf("--type");
+  return i >= 0 ? (process.argv[i + 1] ?? null) : null;
+})();
 
 /** 跳过已算过（当前口径）的事件（默认开启，加快重跑） */
 const skipExisting = !process.argv.includes("--recompute");
@@ -131,13 +140,27 @@ async function loadCandles(
   }));
 }
 
+async function loadDvol(currency: string, from: number, to: number): Promise<VolPoint[]> {
+  const { data } = await db
+    .from("volatility_index")
+    .select("ts,close")
+    .eq("currency", currency)
+    .gte("ts", new Date(from).toISOString())
+    .lte("ts", new Date(to).toISOString())
+    .order("ts", { ascending: true })
+    .limit(200000);
+  return (data ?? []).map((r: any) => ({ ts: new Date(r.ts).getTime(), value: Number(r.close) }));
+}
+
 async function main() {
   const cutoff = new Date(Date.now() - minAgeHours * 3600_000).toISOString();
-  const { data: events, error } = await db
+  let q = db
     .from("events")
     .select("id,token_symbol,t0")
     .lte("t0", cutoff)
     .order("t0", { ascending: true });
+  if (typeFilter) q = q.like("event_type", `${typeFilter}%`);
+  const { data: events, error } = await q;
   if (error) throw error;
   const list = (events ?? []).slice(0, argLimit === Infinity ? undefined : argLimit) as EventRow[];
   if (!list.length) {
@@ -197,6 +220,12 @@ async function main() {
       await sleep(120);
     }
 
+    // --- 隐含波动率（DVOL，仅 BTC/ETH）---
+    const dvol = DVOL_CURRENCIES.has(symbol)
+      ? await loadDvol(symbol, minT - 2 * DAY_MS, maxT)
+      : null;
+    if (dvol?.length) console.log(`  ${symbol}: 已加载 ${dvol.length} 个 DVOL 点`);
+
     for (const e of evs) {
       const t0 = new Date(e.t0).getTime();
       // --- 1m 事件窗口 ---
@@ -214,7 +243,7 @@ async function main() {
         await sleep(120);
       }
 
-      const r = computeReactions(m1, hourly, t0, { priceSource: SOURCE });
+      const r = computeReactions(m1, hourly, t0, { priceSource: SOURCE, impliedVol: dvol });
       if (!r) {
         skipped[symbol] = (skipped[symbol] ?? 0) + 1;
         continue;
@@ -238,6 +267,12 @@ async function main() {
           max_drawdown: r.maxDrawdown,
           max_favorable: r.maxFavorable,
           liquidity_ok: r.liquidityOk,
+          implied_move_1h: r.implied1h,
+          implied_move_4h: r.implied4h,
+          implied_move_24h: r.implied24h,
+          surprise_1h: r.surprise1h,
+          surprise_4h: r.surprise4h,
+          surprise_24h: r.surprise24h,
           methodology_version: METHODOLOGY_VERSION,
           computed_at: new Date().toISOString(),
         },
