@@ -12,6 +12,7 @@ import {
   ASSET_COLOR,
   eventTypeLabel,
   fmtTs,
+  fmtUsd,
   hostOf,
   liquidityLabel,
   pct,
@@ -93,6 +94,14 @@ export default function EventTable({ events }: { events: EventV1[] }) {
         cell: (c) => (
           <span className="mono text-[12px] text-[var(--color-mut)]">
             {eventTypeLabel(c.getValue())}
+          </span>
+        ),
+      }),
+      col.accessor("magnitude_usd", {
+        header: "规模",
+        cell: (c) => (
+          <span className="mono text-[12px] text-[var(--color-mut)]">
+            {c.getValue() == null ? "—" : fmtUsd(c.getValue())}
           </span>
         ),
       }),

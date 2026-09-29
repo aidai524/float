@@ -8,6 +8,7 @@ import { genericRestAdapter } from "./sources/generic-rest";
 import { binanceAdapter } from "./sources/binance";
 import { binanceAnnouncementsAdapter, bybitAnnouncementsAdapter } from "./sources/announcements";
 import { coinMarketCalAdapter } from "./sources/coinmarketcal";
+import { coinMarketCapUnlocksAdapter } from "./sources/coinmarketcap-unlocks";
 
 const registry = new Map<string, DataSourceAdapter>();
 
@@ -30,3 +31,4 @@ register(binanceAdapter);
 register(binanceAnnouncementsAdapter);
 register(bybitAnnouncementsAdapter);
 register(coinMarketCalAdapter);
+register(coinMarketCapUnlocksAdapter);

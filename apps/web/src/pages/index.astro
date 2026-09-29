@@ -4,7 +4,7 @@ import EventTable from "../components/EventTable";
 import BaselinePanel from "../components/BaselinePanel.astro";
 import CategoryPanel from "../components/CategoryPanel.astro";
 import { listCategoryStats, listEvents, listTypeStats } from "../lib/db";
-import { eventTypeLabel, fmtTs, pct } from "../lib/format";
+import { eventTypeLabel, fmtTs, fmtUsd, pct } from "../lib/format";
 
 const events = await listEvents(1000);
 const stats = await listTypeStats(5);
@@ -93,8 +93,14 @@ const cards = [
 ];
 
 const daysUntil = (t: string) => {
-  const d = Math.ceil((new Date(t).getTime() - now) / 86400000);
-  return d <= 0 ? "今天" : d === 1 ? "明天" : `${d} 天后`;
+  const ms = new Date(t).getTime() - now;
+  if (ms <= 0) return "已发生";
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins} 分钟后`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} 小时后`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "明天" : `${days} 天后`;
 };
 ---
 <Layout subtitle={`数据更新于 ${generatedAt} UTC`}>
@@ -126,8 +132,9 @@ const daysUntil = (t: string) => {
     {
       withBaseline.length === 0 && (
         <p class="mb-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-300">
-          ⚠️ 当前没有「有历史基准」的未来事件。原因：上币由交易所即时公告、不会提前出现；解锁与宏观事件尚未接入（见 TODO B1）。
-          下面的列表因此还只是「项目活动」，参考价值有限。
+          ⚠️ 解锁事件已接入（数据来源 CoinMarketCap，免 key），但**历史基准还在积累中**——
+          该源只提供"即将解锁"，没有历史，需要定期轮询累积后才能算出中位数与分位。
+          上币类事件的历史基准已就绪（见上方面板）。
         </p>
       )
     }
@@ -142,7 +149,7 @@ const daysUntil = (t: string) => {
             <th class="px-3 py-2 text-left">代币</th>
             <th class="px-3 py-2 text-left">类型</th>
             <th class="px-3 py-2 text-left">标题</th>
-            <th class="px-3 py-2 text-left">该类历史</th>
+            <th class="px-3 py-2 text-left">规模 / 该类历史</th>
           </tr>
         </thead>
         <tbody>
@@ -173,7 +180,9 @@ const daysUntil = (t: string) => {
                 <td class="mono px-3 py-2 text-[11px] text-[var(--color-mut)]">
                   {st
                     ? `1h 中位 ${pct(st.med1h)} · 上涨 ${st.pos4h == null ? "—" : Math.round(st.pos4h * 100) + "%"}（N=${st.n}）`
-                    : "—"}
+                    : e.magnitude_usd != null
+                      ? `${fmtUsd(e.magnitude_usd)}${e.magnitude_pct != null ? ` · 占供应 ${(e.magnitude_pct * 100).toFixed(2)}%` : ""}${(e.source_detail as any)?.allocation ? ` · ${(e.source_detail as any).allocation}` : ""}`
+                      : "—"}
                 </td>
               </tr>
             );

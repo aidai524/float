@@ -56,13 +56,15 @@ Binance 上币 · RWA（N=25）
 
 ## Backlog（明确暂缓，做完当前冲刺再排）
 
-### B1 · 真实解锁事件接入
-**为什么暂缓**：需要先做数据源决策（要花钱或要人工）。
-**现状**：CoinMarketCal 免费档对 vesting 覆盖很弱——实测 2 条 "unlock" 还是 Jev 对质押激励的误判。
-**选项**：
-- 自建 top 200–300 代币精选库（免费，人工维护）
-- DefiLlama Pro（$49/月）
-- Tokenomist API（询价）
+### B1 · 真实解锁事件接入（部分完成）
+**已完成**：接入 CoinMarketCap 免费解锁接口（`token-unlock/listing`），99 条即将解锁入库，含金额/占供应比例/分配对象/vesting 类型。
+**关键限制（实测）**：该接口只给"即将解锁"（滚动约未来 24 小时），`start>1` 分页返回空，无历史数据。
+→ 历史基准只能靠**定期轮询累积**（建议每日 cron）。
+
+**未完成 / 待决策**：
+- [ ] 定时轮询累积解锁历史（Cloudflare Cron）
+- [ ] 若要立即拿到历史基准，需要付费源：DefiLlama Pro（$49/月）/ Tokenomist（询价）
+- [x] 自建解锁精选库（暂不需要——CMC 已覆盖未来）
 
 **接入时前端零改动**：`magnitude_usd` / `magnitude_pct` 已在契约里并已渲染。
 
