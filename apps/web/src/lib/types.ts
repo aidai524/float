@@ -1,0 +1,63 @@
+/**
+ * 读侧契约类型（与 packages/shared 的 zod schema 对应）。
+ * 前端只依赖这些字段，不感知任何数据源。
+ * 新增事件类型（如 unlock）时此文件无需改动——字段是通用的。
+ */
+export type AssetClass = "crypto" | "rwa" | "unknown";
+
+export interface EventV1 {
+  id: number;
+  event_type: string;
+  token_symbol: string;
+  chain: string | null;
+  t0: string;
+  t0_confidence: "high" | "medium" | "low";
+  magnitude_usd: number | null;
+  magnitude_pct: number | null;
+  title: string | null;
+  source_url: string | null;
+  category: string;
+  asset_class: AssetClass;
+  confidence: number;
+  source_count: number;
+  base_price: number | null;
+  base_ts: string | null;
+  base_after_t0: boolean | null;
+  ret_5m: number | null;
+  ret_15m: number | null;
+  ret_1h: number | null;
+  ret_4h: number | null;
+  ret_24h: number | null;
+  vol_1h: number | null;
+  vol_ratio: number | null;
+  max_drawdown: number | null;
+  max_favorable: number | null;
+  liquidity_ok: boolean | null;
+  price_source: string | null;
+  methodology_version: string;
+  source_detail: Record<string, unknown>;
+  first_seen_at: string;
+  updated_at: string;
+}
+
+export interface TokenV1 {
+  id: number;
+  symbol: string;
+  name: string | null;
+  chain: string | null;
+  category: string | null;
+  asset_class: AssetClass;
+  market_cap: number | null;
+  adv_30d: number | null;
+  event_count: number;
+  last_event_at: string | null;
+}
+
+export interface Candle {
+  ts: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}

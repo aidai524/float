@@ -85,6 +85,21 @@ tools/          # brightness（C）
 .github/        # CI
 ```
 
+## 前端（apps/web）
+
+Astro 静态站点 + React islands（TanStack Table + TradingView Lightweight Charts）。
+
+```bash
+pnpm --filter @cee/web dev      # 开发 http://localhost:4321
+pnpm --filter @cee/web build    # 静态构建（构建时从 Supabase 拉数据）
+pnpm --filter @cee/web preview  # 预览构建产物
+```
+
+页面：`/` 总览 · `/calendar` 事件日历 · `/event/[id]` 事件详情 · `/tokens` 代币列表 · `/token/[symbol]` 代币详情
+
+> 通用化设计：事件详情按 `event_type` 渲染字段，只依赖契约字段（含尚未使用的 `magnitude_usd` / `magnitude_pct`）。
+> 后续接入解锁事件时，前端无需改动。
+
 ## 不可破的规则
 
 1. **前后端只读 `api.*` 契约视图**，永不直接读基础表、永不感知数据源。

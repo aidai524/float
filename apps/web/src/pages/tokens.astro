@@ -1,0 +1,60 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { listTokens } from "../lib/db";
+import { ASSET_COLOR, fmtTs, fmtUsd } from "../lib/format";
+
+const tokens = await listTokens(400);
+const withEvents = tokens.filter((t) => t.event_count > 0);
+---
+<Layout title="代币" subtitle={`${withEvents.length} 个有事件的代币`}>
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">代币</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+    按事件数量排序。ADV 为该代币事件前 30 天的日均成交额（用于流动性判定）。
+  </p>
+
+  <div class="overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)]">
+    <table class="w-full border-collapse text-[13px]">
+      <thead>
+        <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+          <th class="px-3 py-2 text-left">代币</th>
+          <th class="px-3 py-2 text-left">资产类别</th>
+          <th class="px-3 py-2 text-left">链</th>
+          <th class="px-3 py-2 text-right">ADV 30d</th>
+          <th class="px-3 py-2 text-right">事件数</th>
+          <th class="px-3 py-2 text-left">最近事件</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          withEvents.map((t) => (
+            <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
+              <td class="px-3 py-2">
+                <a
+                  href={`/token/${t.symbol}`}
+                  class="font-semibold no-underline text-[var(--color-fg)] hover:text-[var(--color-acc)]"
+                >
+                  {t.symbol}
+                </a>
+                {t.name && <span class="ml-2 text-[var(--color-mut)]">{t.name}</span>}
+              </td>
+              <td class="px-3 py-2">
+                <span
+                  class="inline-block rounded-full px-2 py-[1px] text-[11px] font-semibold text-white"
+                  style={`background:${ASSET_COLOR[t.asset_class] ?? "#64748b"}`}
+                >
+                  {t.asset_class}
+                </span>
+              </td>
+              <td class="px-3 py-2 text-[var(--color-mut)]">{t.chain ?? "—"}</td>
+              <td class="mono px-3 py-2 text-right">{fmtUsd(t.adv_30d)}</td>
+              <td class="mono px-3 py-2 text-right">{t.event_count}</td>
+              <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                {fmtTs(t.last_event_at)}
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</Layout>

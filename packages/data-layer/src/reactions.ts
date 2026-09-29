@@ -89,12 +89,6 @@ function lastAtOrBefore(candles: Candle[], target: number): Candle | null {
   return ans;
 }
 
-function firstAfter(candles: Candle[], target: number): Candle | null {
-  for (const c of candles) if (c.ts > target) return c;
-  return null;
-}
-
-/** 找 ts >= target 的第一根 */
 function firstAtOrAfter(candles: Candle[], target: number): Candle | null {
   for (const c of candles) if (c.ts >= target) return c;
   return null;

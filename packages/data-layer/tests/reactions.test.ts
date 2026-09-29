@@ -14,7 +14,7 @@ function makeCandles(
   from: number,
   count: number,
   price: (i: number) => number,
-  volume = (i: number) => 100,
+  volume = (_i: number) => 100,
   stepMs = MINUTE,
 ): Candle[] {
   const out: Candle[] = [];

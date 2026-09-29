@@ -1,0 +1,78 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import EventTable from "../../components/EventTable";
+import PriceChart from "../../components/PriceChart";
+import { getCandles, listEventsForToken, listTokens } from "../../lib/db";
+import { ASSET_COLOR, eventTypeLabel, fmtTs, fmtUsd, pct, pctClass } from "../../lib/format";
+
+export async function getStaticPaths() {
+  const tokens = await listTokens(400);
+  return tokens.filter((t) => t.event_count > 0).map((t) => ({
+    params: { symbol: t.symbol },
+    props: { token: t },
+  }));
+}
+
+const { token } = Astro.props;
+const events = await listEventsForToken(token.symbol);
+const daily = await getCandles(token.symbol, "1d", 400);
+
+const t0 = daily.length ? new Date(daily[0]!.ts).getTime() : 0;
+const t1 = daily.length ? new Date(daily[daily.length - 1]!.ts).getTime() : 0;
+const markers = events
+  .filter((e) => e.event_type !== "unknown")
+  .map((e) => ({ t: new Date(e.t0).getTime(), label: e.event_type }))
+  .filter((m) => m.t >= t0 && m.t <= t1);
+
+const measured = events.filter((e) => e.ret_1h != null);
+const avg = (key: "ret_1h" | "ret_4h" | "ret_24h") => {
+  const vals = measured.map((e) => e[key]).filter((v): v is number => v != null);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+};
+---
+<Layout title={`${token.symbol} 事件`}>
+  <a href="/tokens" class="text-[12px] no-underline text-[var(--color-mut)]">← 返回代币</a>
+  <header class="mt-2 mb-4 flex items-center gap-3 flex-wrap">
+    <h1 class="m-0 text-[22px] font-semibold">{token.symbol}</h1>
+    <span
+      class="rounded-full px-2 py-[2px] text-[11px] font-semibold text-white"
+      style={`background:${ASSET_COLOR[token.asset_class] ?? "#64748b"}`}
+    >
+      {token.asset_class}
+    </span>
+    {token.name && <span class="text-[13px] text-[var(--color-mut)]">{token.name}</span>}
+  </header>
+
+  <section class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
+      <div class="text-[11px] text-[var(--color-mut)]">事件数</div>
+      <div class="text-[18px] font-semibold">{events.length}</div>
+    </div>
+    <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
+      <div class="text-[11px] text-[var(--color-mut)]">已测量</div>
+      <div class="text-[18px] font-semibold">{measured.length}</div>
+    </div>
+    <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
+      <div class="text-[11px] text-[var(--color-mut)]">平均 1h 反应</div>
+      <div class={`text-[18px] font-semibold ${pctClass(avg("ret_1h"))}`}>{pct(avg("ret_1h"))}</div>
+    </div>
+    <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
+      <div class="text-[11px] text-[var(--color-mut)]">ADV 30d</div>
+      <div class="text-[18px] font-semibold">{fmtUsd(token.adv_30d)}</div>
+    </div>
+  </section>
+
+  {
+    daily.length > 0 && (
+      <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+        <h2 class="m-0 mb-3 text-[13px] font-semibold">日线 + 事件标注（{markers.length} 个）</h2>
+        <PriceChart candles={daily} markers={markers} client:load />
+      </section>
+    )
+  }
+
+  <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <h2 class="m-0 mb-3 text-[13px] font-semibold">该代币全部事件</h2>
+    <EventTable events={events} client:load />
+  </section>
+</Layout>

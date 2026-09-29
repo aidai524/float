@@ -31,3 +31,7 @@ supabase/.temp/
 
 # 生成的预览页
 preview/
+
+# Astro
+.astro/
+apps/web/dist/

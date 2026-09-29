@@ -1,0 +1,18 @@
+---
+import Layout from "../layouts/Layout.astro";
+import EventTable from "../components/EventTable";
+import { listEvents } from "../lib/db";
+
+const events = await listEvents(300);
+const upcoming = events.filter((e) => new Date(e.t0).getTime() > Date.now());
+const past = events.filter((e) => new Date(e.t0).getTime() <= Date.now());
+---
+<Layout title="事件日历" subtitle={`${upcoming.length} 个待发生 · ${past.length} 个已发生`}>
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">事件日历</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+    按类型 / 资产类别筛选，按任意列排序。点标题进入事件详情，点来源可跳转原始公告。
+  </p>
+  <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <EventTable events={events} client:load />
+  </section>
+</Layout>

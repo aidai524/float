@@ -1,0 +1,60 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  subtitle?: string;
+}
+const { title = "MoonEvent", subtitle } = Astro.props;
+const nav = [
+  { href: "/", label: "总览" },
+  { href: "/calendar", label: "事件日历" },
+  { href: "/tokens", label: "代币" },
+];
+const path = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title === "MoonEvent" ? "MoonEvent · 加密事件研究引擎" : `${title} · MoonEvent`}</title>
+    <meta
+      name="description"
+      content="加密事件研究引擎：事件发生后的 5m / 15m / 1h / 4h / 24h 实际反应，基于历史市场数据。"
+    />
+  </head>
+  <body class="min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)]">
+    <header class="border-b border-[var(--color-line)] px-6 py-3 flex items-baseline gap-6 flex-wrap">
+      <a href="/" class="text-[15px] font-semibold no-underline text-[var(--color-fg)]">
+        MoonEvent <span class="text-[var(--color-mut)] font-normal">事件研究引擎</span>
+      </a>
+      <nav class="flex gap-4 text-[13px]">
+        {
+          nav.map((n) => (
+            <a
+              href={n.href}
+              class:list={[
+                "no-underline",
+                path === n.href || (n.href !== "/" && path.startsWith(n.href))
+                  ? "text-[var(--color-acc)]"
+                  : "text-[var(--color-mut)] hover:text-[var(--color-fg)]",
+              ]}
+            >
+              {n.label}
+            </a>
+          ))
+        }
+      </nav>
+      {subtitle && <span class="ml-auto text-[11px] text-[var(--color-mut)]">{subtitle}</span>}
+    </header>
+
+    <main class="mx-auto max-w-[1400px] px-6 py-6">
+      <slot />
+    </main>
+
+    <footer class="border-t border-[var(--color-line)] px-6 py-4 text-[11px] text-[var(--color-mut)]">
+      基于历史市场数据，非 AI 生成 · 反应口径 methodology v1 · 仅供研究，非投资建议
+    </footer>
+  </body>
+</html>

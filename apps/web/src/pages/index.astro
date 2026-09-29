@@ -1,0 +1,64 @@
+---
+import Layout from "../layouts/Layout.astro";
+import EventTable from "../components/EventTable";
+import PriceChart from "../components/PriceChart";
+import { getCandles, listEvents } from "../lib/db";
+
+const events = await listEvents(300);
+const btc = await getCandles("BTC", "1d", 400);
+
+const measured = events.filter((e) => e.ret_1h != null).length;
+const byAsset = events.reduce<Record<string, number>>((a, e) => {
+  a[e.asset_class] = (a[e.asset_class] ?? 0) + 1;
+  return a;
+}, {});
+const byType = events.reduce<Record<string, number>>((a, e) => {
+  a[e.event_type] = (a[e.event_type] ?? 0) + 1;
+  return a;
+}, {});
+
+const cards = [
+  { label: "事件总数", value: String(events.length) },
+  { label: "已测量反应", value: String(measured) },
+  ...Object.entries(byAsset).map(([k, v]) => ({ label: `asset_class · ${k}`, value: String(v) })),
+  ...Object.entries(byType)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([k, v]) => ({ label: `type · ${k}`, value: String(v) })),
+];
+
+const t0 = btc.length ? new Date(btc[0]!.ts).getTime() : 0;
+const t1 = btc.length ? new Date(btc[btc.length - 1]!.ts).getTime() : 0;
+// 只标注"有意义"的事件类型（跳过 unknown），标签只用代币名，避免拥挤
+const markers = events
+  .filter((e) => e.event_type !== "unknown")
+  .map((e) => ({ t: new Date(e.t0).getTime(), label: e.token_symbol }))
+  .filter((m) => m.t >= t0 && m.t <= t1);
+
+const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
+---
+<Layout subtitle={`数据更新于 ${generatedAt} UTC`}>
+  <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+    {
+      cards.map((c) => (
+        <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-3">
+          <div class="text-[20px] font-semibold leading-tight">{c.value}</div>
+          <div class="mt-0.5 text-[11px] text-[var(--color-mut)]">{c.label}</div>
+        </div>
+      ))
+    }
+  </div>
+
+  <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <h2 class="m-0 text-[13px] font-semibold">BTC 日线 + 事件标注</h2>
+    <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+      橙色箭头为事件 T0（窗口内 {markers.length} 个）。价格来自 Binance，事件来自交易所公告 / CoinMarketCal。
+    </p>
+    <PriceChart candles={btc} markers={markers} client:load />
+  </section>
+
+  <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <h2 class="m-0 mb-3 text-[13px] font-semibold">事件（最近 {events.length} 条）</h2>
+    <EventTable events={events} client:load />
+  </section>
+</Layout>
