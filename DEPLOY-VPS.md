@@ -69,14 +69,18 @@ scripts/install-daily-cron.sh status
 `defillama.com` 服务器取不到，只能用无头浏览器。**解锁是排期的**，几周跑一次即可。
 
 ```bash
+# 至少装一个引擎；patchright 是反检测分支，成功率更高（建议都装）
 pnpm add -D playwright
 pnpm exec playwright install --with-deps chromium
+pnpm add -D patchright
+pnpm exec patchright install --with-deps chromium
 
-# 试一次（headless 若被质询，用有头 + xvfb）
+# 一条命令依次试：patchright/playwright × headless/headful，成功即止
 node scripts/fetch-defillama-browser.mjs
-# 失败就：
+
+# 若 headless 全被质询，用有头 + xvfb（指纹最真，成功率最高）
 sudo apt-get install -y xvfb
-HEADFUL=1 xvfb-run -a node scripts/fetch-defillama-browser.mjs
+xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful
 
 # 成功后回填
 pnpm unlocks:import
@@ -86,7 +90,7 @@ pnpm unlocks:import
 
 ```bash
 # 每周一 02:00：取快照 → 回填
-( crontab -l; echo '0 2 * * 1 cd '"$PWD"' && PATH="/usr/local/bin:/usr/bin:/bin:$(dirname $(command -v node))" node scripts/fetch-defillama-browser.mjs && pnpm unlocks:import >> .devsession/unlocks.log 2>&1 # float-unlocks' ) | crontab -
+( crontab -l; echo '0 2 * * 1 cd '"$PWD"' && PATH="/usr/local/bin:/usr/bin:/bin:$(dirname $(command -v node))" xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful && pnpm unlocks:import >> .devsession/unlocks.log 2>&1 # float-unlocks' ) | crontab -
 ```
 
 ## 各部分跑在哪（现状）
@@ -102,5 +106,5 @@ pnpm unlocks:import
 
 - **Binance 451** → VPS 区域在美国，换区。
 - **cron 找不到 pnpm/node** → `install-daily-cron.sh` 已注入 PATH；手工改 crontab 时记得带。
-- **Playwright 被 Cloudflare 挡** → `HEADFUL=1 xvfb-run` 重试；仍不行则回退到本机浏览器快照后 `scp` 到 VPS。
+- **浏览器被 Cloudflare 挡** → 脚本会自动依次试 patchright/playwright × headless/headful；再不行用 `--headful` + xvfb；仍不行则回退到本机浏览器快照后 `scp` 到 VPS。
 - **时区**：cron 按 VPS 本地时区。`timedatectl` 设 `UTC` 最省心。
