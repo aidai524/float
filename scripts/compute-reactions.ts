@@ -50,6 +50,12 @@ const typeFilter = (() => {
   return i >= 0 ? (process.argv[i + 1] ?? null) : null;
 })();
 
+/** 只要稀释占比 ≥ 该值的事件（如 --min-pct 0.001 = 0.1% 供应） */
+const minPct = (() => {
+  const i = process.argv.indexOf("--min-pct");
+  return i >= 0 ? Number(process.argv[i + 1]) : null;
+})();
+
 /** 跳过已算过（当前口径）的事件（默认开启，加快重跑） */
 const skipExisting = !process.argv.includes("--recompute");
 
@@ -160,6 +166,7 @@ async function main() {
     .lte("t0", cutoff)
     .order("t0", { ascending: true });
   if (typeFilter) q = q.like("event_type", `${typeFilter}%`);
+  if (minPct != null && Number.isFinite(minPct)) q = q.gte("magnitude_pct", minPct);
   const { data: events, error } = await q;
   if (error) throw error;
   const list = (events ?? []).slice(0, argLimit === Infinity ? undefined : argLimit) as EventRow[];

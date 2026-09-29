@@ -3,7 +3,16 @@
  * 服务端使用（构建期 / SSR），密钥只走服务端。
  */
 import { createClient } from "@supabase/supabase-js";
-import type { Candle, CategoryStatsV1, EventTypeStatsV1, EventV1, TokenV1 } from "./types";
+import type {
+  Candle,
+  CategoryStatsV1,
+  EventTypeStatsV1,
+  EventV1,
+  TokenV1,
+  UnlockCategoryStat,
+  UnlockDilutionStat,
+  UnlockSlope,
+} from "./types";
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -129,4 +138,29 @@ export async function getEventCandles(
 
   const d1 = await getCandles(symbol, "1d", 400);
   return { interval: "1d", candles: d1 };
+}
+
+/** api.unlock_dilution_stats_v1 —— 解锁按稀释规模分桶 */
+export async function listUnlockDilutionStats(): Promise<UnlockDilutionStat[]> {
+  const { data, error } = await api.from("unlock_dilution_stats_v1").select("*");
+  if (error) throw error;
+  return (data ?? []) as UnlockDilutionStat[];
+}
+
+/** api.unlock_category_stats_v1 —— 解锁按接收方类别（样本 >= minN） */
+export async function listUnlockCategoryStats(minN = 5): Promise<UnlockCategoryStat[]> {
+  const { data, error } = await api
+    .from("unlock_category_stats_v1")
+    .select("*")
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as UnlockCategoryStat[];
+}
+
+/** api.unlock_slope_v1 —— 每 1% 稀释对应的 4h 收益 */
+export async function getUnlockSlope(): Promise<UnlockSlope | null> {
+  const { data, error } = await api.from("unlock_slope_v1").select("*").maybeSingle();
+  if (error) throw error;
+  return (data as UnlockSlope) ?? null;
 }

@@ -121,3 +121,40 @@ export interface EventBaselineV1 {
   pct_4h: number | null;
   pct_24h: number | null;
 }
+
+/** api.unlock_dilution_stats_v1 —— 解锁按稀释规模（占供应）分桶 */
+export interface UnlockDilutionStat {
+  bucket: string;
+  n: number;
+  n_4h: number;
+  avg_pct: number | null;
+  median_ret_1h: number | null;
+  median_ret_4h: number | null;
+  median_ret_24h: number | null;
+  median_max_dd: number | null;
+  pos_4h: number | null;
+}
+
+/** api.unlock_category_stats_v1 —— 解锁按接收方类别 */
+export interface UnlockCategoryStat {
+  category: string;
+  n: number;
+  n_4h: number;
+  avg_pct: number | null;
+  median_ret_1h: number | null;
+  median_ret_4h: number | null;
+  median_ret_24h: number | null;
+  p25_ret_4h: number | null;
+  p75_ret_4h: number | null;
+  median_max_dd: number | null;
+  pos_4h: number | null;
+}
+
+/** api.unlock_slope_v1 —— 每 1% 供应稀释对应的 4h 收益（归一化斜率） */
+export interface UnlockSlope {
+  n: number;
+  slope_4h_per_pct: number | null;
+  r2: number | null;
+  median_ret_4h: number | null;
+  median_pct: number | null;
+}
