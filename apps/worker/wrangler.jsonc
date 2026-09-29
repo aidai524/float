@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "float",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // 静态资源 = Astro 构建产物；/api/* 优先交给 Worker
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*"],
+  },
+  "observability": { "enabled": true },
+  // 每日刷新（解锁 / 公告 / 反应）。先占位，迁移完成后在此触发。
+  "triggers": {
+    "crons": ["10 1 * * *"],
+  },
+}

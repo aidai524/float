@@ -26,7 +26,9 @@
     "classify": "tsx scripts/classify.ts",
     "backfill:dvol": "tsx scripts/backfill-dvol.ts",
     "daily": "tsx scripts/daily-refresh.ts",
-    "unlocks:import": "tsx scripts/backfill-unlocks.ts"
+    "unlocks:import": "tsx scripts/backfill-unlocks.ts",
+    "worker:dev": "pnpm --filter @cee/worker run dev",
+    "deploy": "pnpm --filter @cee/web build && pnpm --filter @cee/worker run deploy"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
