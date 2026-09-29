@@ -56,7 +56,7 @@ cp .env.example .env          # 填入密钥（TypeSafe、Bark 等）
 
 ## Supabase
 
-当前云端项目：`ynuvnrkcbbyzhdyludgi`（ap-southeast-1）。连接信息在 `.env`。
+当前云端项目：见 `.env` 的 `SUPABASE_PROJECT_REF`（ap-southeast-1）。连接信息都在 `.env`。
 
 ```bash
 scripts/db-migrate.sh                 # 应用 supabase/migrations + seed
