@@ -98,16 +98,15 @@ tools/          # brightness（C）
 
 - [x] Phase 0：项目基线 + 契约冻结
 - [x] Phase 0.5：Jev 判断模块（分类 0.98 / 去重 0.96 实测）
-- [🚧] Phase 1：数据采集与统一事件库（解锁 + 上币）
-  - [x] 云端 Supabase 建库 + 迁移 + 契约集成测试
-  - [x] 真实 Binance 数据写入云端（500 根 K 线）
-  - [x] Binance/Bybit 公告 → 上币事件（listing_cex）
-  - [x] Jev 富化：事件类型 + **asset_class（crypto / rwa）**
-  - [x] 静态预览页
+- [x] Phase 1：数据采集与统一事件库（51 条事件、1100+ K 线）
+  - [x] 云端 Supabase + 迁移 + 契约集成测试
+  - [x] Binance / Bybit 公告 → 上币事件
+  - [x] **CoinMarketCal v2**（46 条事件）
+  - [x] Jev 富化：事件类型 + asset_class（crypto / rwa）
   - [ ] 自建解锁精选库
-  - [ ] resolveEvents 跨源去重端到端
-
-> **asset_class**：`crypto`（加密原生） / `rwa`（代币化股票、ETF、商品、国债） / `unknown`。
-> RWA 是 web3 的典型场景，**不排除**，单独归类。
-- [ ] Phase 2：反应计算引擎
+- [🚧] Phase 2：反应计算引擎
+  - [x] 纯函数引擎 + 10 个单测 + 人工核对一致
+  - [x] 批量计算 20 条事件（5m/15m/1h/4h/24h、波动、量比、回撤/冲高、ADV）
+  - [x] 数据质量标记：流动性三态（ok/低/未知）、base_after_t0
+  - [ ] 与预览页/API 全量打通（进行中）
 - [ ] Phase 3：MVP 前端（日历 + 事件详情）
