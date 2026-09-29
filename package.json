@@ -26,6 +26,7 @@
     "classify": "tsx scripts/classify.ts",
     "backfill:dvol": "tsx scripts/backfill-dvol.ts",
     "daily": "tsx scripts/daily-refresh.ts",
+    "probe": "tsx scripts/probe-sources.ts",
     "unlocks:import": "tsx scripts/backfill-unlocks.ts",
     "worker:dev": "pnpm --filter @cee/worker run dev",
     "deploy": "pnpm --filter @cee/web build && pnpm --filter @cee/worker run deploy"
