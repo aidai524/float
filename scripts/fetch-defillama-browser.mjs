@@ -22,6 +22,14 @@
  * 典型 VPS 流程：
  *   sudo apt-get install -y xvfb
  *   xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful
+ *
+ * Arch / 非官方支持的系统：
+ *   先按原样跑（会自动回退到 ubuntu24.04 构建）。若报缺共享库：
+ *     sudo pacman -S --needed nss nspr atk at-spi2-atk cups libdrm libxkbcommon \
+ *       libxcomposite libxdamage libxfixes libxrandr mesa pango cairo alsa-lib gtk3 libxshmfence
+ *   若下载的构建仍跑不起来，用系统 Chromium（注意会失去 patchright 的隐身优势）：
+ *     sudo pacman -S chromium
+ *     CHROME_PATH=/usr/bin/chromium node scripts/fetch-defillama-browser.mjs
  */
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -62,10 +70,13 @@ async function attempt(mod, { engine, headless }) {
   process.stdout.write(`→ ${label} … `);
   let browser;
   try {
-    browser = await mod.chromium.launch({
+    const launchOpts = {
       headless,
       args: ["--disable-blink-features=AutomationControlled"],
-    });
+      // Arch 等平台可用系统 Chromium 绕过官方构建的依赖问题
+      ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
+    };
+    browser = await mod.chromium.launch(launchOpts);
   } catch (e) {
     console.log(`启动失败：${e instanceof Error ? e.message.split("\n")[0] : e}`);
     return null;
@@ -133,7 +144,8 @@ if (!won) {
     "\n所有策略都失败。下一步：\n" +
       "  1) 安装 patchright：pnpm add -D patchright && pnpm exec patchright install chromium\n" +
       "  2) 有头模式：sudo apt-get install -y xvfb && xvfb-run -a node scripts/fetch-defillama-browser.mjs --headful\n" +
-      "  3) 仍不行 → 住宅代理，或回退到本机浏览器快照后 scp 到 VPS",
+      "  3) 仍不行 → 住宅代理，或回退到本机浏览器快照后 scp 到 VPS\n" +
+      "  4) 非 Debian 系统缺共享库 → 装系统依赖，或用 CHROME_PATH=/usr/bin/chromium",
   );
   process.exit(1);
 }
