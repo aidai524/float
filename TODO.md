@@ -56,6 +56,36 @@ Binance 上币 · RWA（N=25）
 
 ## Backlog（明确暂缓，做完当前冲刺再排）
 
+### B6 · DefiLlama Pro / 付费解锁源（**用户已确认要开，待办**）
+
+**为什么需要**：CMC 免费接口只给"未来约 24 小时"的解锁，**没有历史**，导致解锁类事件的统计层完全缺位。
+
+**具体影响**（CMC 免费接口限制所及）：
+| 受影响 | 说明 |
+|---|---|
+| 解锁的**历史基准** | `api.event_type_stats_v1` 里不会有 `unlock_cliff` / `unlock_linear` 行 |
+| 解锁的**分位** | 事件详情页不会显示"同类历史 X 分位" |
+| 解锁的**规模分位** | 无法回答"这次解锁比通常大吗" |
+| 解锁的**类别拆分** | `api.category_stats_v1` 无法覆盖解锁 |
+| 前瞻列表的基准列 | 解锁事件只能显示规模，无法挂基准 |
+
+**不受影响**（已完整）：上币类基准（N=348）、价格数据、反应引擎、契约层、前端框架、代币分类。
+
+**❗ 开通前必确认**：实测报错指向 https://defillama.com/subscription ，而外部报道称
+**Pro = $49/月、API = $250/月**。需确认 **unlocks/emissions 接口到底属于哪一档** —— 价差很大。
+
+**其他备选**：Tokenomist API（询价）、CryptoRank API、自建精选库。
+
+**开通后要做**：
+- [ ] 把 key 写进 `.env`（`DEFILLAMA_API_KEY`）
+- [ ] 写 `sources/defillama-unlocks.ts`，回填历史 vesting 事件
+- [ ] 重跑 `pnpm reactions` 算解锁历史反应
+- [ ] 解锁基准自动出现在基准面板与事件详情分位
+
+**网络备注**：本机访问 defillama.com 被阻（TLS/连接重置），但生产在 Cloudflare Workers 上不受影响。
+
+---
+
 ### B1 · 真实解锁事件接入（部分完成）
 **已完成**：接入 CoinMarketCap 免费解锁接口（`token-unlock/listing`），99 条即将解锁入库，含金额/占供应比例/分配对象/vesting 类型。
 **关键限制（实测）**：该接口只给"即将解锁"（滚动约未来 24 小时），`start>1` 分页返回空，无历史数据。
