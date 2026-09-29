@@ -6,6 +6,7 @@
 import type { DataSourceAdapter } from "./types";
 import { genericRestAdapter } from "./sources/generic-rest";
 import { binanceAdapter } from "./sources/binance";
+import { binanceAnnouncementsAdapter, bybitAnnouncementsAdapter } from "./sources/announcements";
 
 const registry = new Map<string, DataSourceAdapter>();
 
@@ -25,3 +26,5 @@ export function listAdapters(): string[] {
 // ---- 内置注册 ----
 register(genericRestAdapter);
 register(binanceAdapter);
+register(binanceAnnouncementsAdapter);
+register(bybitAnnouncementsAdapter);

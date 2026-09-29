@@ -53,3 +53,13 @@ insert into data_sources (id, type, auth, cost_tier, priority, rate_limit, refre
  '{"base_url":"file://packages/data-layer/data/unlocks","kind":"unlock_import"}')
 
 on conflict (id) do nothing;
+
+-- 交易所公告源（免 key，上币事件）
+insert into data_sources (id, type, auth, cost_tier, priority, rate_limit, refresh, fallback, config) values
+('binance-announcements', 'listing', 'none', 'free', 15,
+ '{"rpm": 60, "dailyQuota": 5000}', '1h', '{}',
+ '{"base_url":"https://www.binance.com","catalog_id":48,"page_size":50}'),
+('bybit-announcements', 'listing', 'none', 'free', 25,
+ '{"rpm": 60, "dailyQuota": 5000}', '1h', '{}',
+ '{"base_url":"https://api.bybit.com","limit":50}')
+on conflict (id) do nothing;

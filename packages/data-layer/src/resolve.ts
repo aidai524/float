@@ -86,7 +86,7 @@ export async function resolveEvents(
   // 分组
   const groups = new Map<string, SourceRec[]>();
   for (const r of records as SourceRec[]) {
-    if (!r.t0) continue; // 无 T0 不能成为黄金事件
+    if (!r.t0 || !r.token_symbol) continue; // 无 T0 或无代币符号不能成为黄金事件
     const key = canonicalKey(r.event_type, r.token_symbol, r.t0, r.magnitude_usd);
     const arr = groups.get(key) ?? [];
     arr.push(r);
