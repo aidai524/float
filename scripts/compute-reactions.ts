@@ -41,6 +41,9 @@ const minAgeHours = (() => {
 /** 回填场景不落 K 线，避免撑爆免费额度 */
 const noStore = process.argv.includes("--no-store");
 
+/** 跳过已算过（当前口径）的事件（默认开启，加快重跑） */
+const skipExisting = !process.argv.includes("--recompute");
+
 interface EventRow {
   id: number;
   token_symbol: string;
@@ -141,11 +144,27 @@ async function main() {
     console.log(`没有可计算的事件（需 T0 ≤ ${cutoff}，即至少 ${minAgeHours}h 前）`);
     return;
   }
+
+  // 已有反应的事件（当前口径）直接跳过
+  let todo = list;
+  if (skipExisting) {
+    const { data: done } = await db
+      .from("event_reactions")
+      .select("event_id")
+      .eq("methodology_version", METHODOLOGY_VERSION);
+    const doneSet = new Set((done ?? []).map((r: any) => r.event_id));
+    todo = list.filter((e) => !doneSet.has(e.id));
+    if (!todo.length) {
+      console.log(`✓ 全部已完成（${list.length} 条，口径 ${METHODOLOGY_VERSION}）`);
+      return;
+    }
+    console.log(`待计算 ${todo.length} 条（已跳过 ${list.length - todo.length} 条已完成）`);
+  }
   console.log(`可计算事件 ${list.length} 条 · methodology ${METHODOLOGY_VERSION} · 截止 ${cutoff}`);
 
   // 按代币分组，1h 基准线按代币取并集范围
   const bySymbol = new Map<string, EventRow[]>();
-  for (const e of list) {
+  for (const e of todo) {
     const arr = bySymbol.get(e.token_symbol) ?? [];
     arr.push(e);
     bySymbol.set(e.token_symbol, arr);

@@ -27,6 +27,7 @@ export const EVENT_TYPE_CRITERIA: Record<EventType, string | null> = {
   governance: "Governance vote or proposal",
   macro_fomc: "Central bank interest-rate decision",
   macro_cpi: "Inflation / CPI data release",
+  macro_nfp: "US nonfarm payrolls / employment situation release",
   etf: "ETF approval or decision",
   exploit: "Hack, exploit, or loss of funds",
   unknown: "None of the above, or not enough information",

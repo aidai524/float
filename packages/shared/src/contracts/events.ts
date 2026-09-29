@@ -39,6 +39,7 @@ export const EventTypeSchema = z.enum([
   // 宏观/外生
   "macro_fomc",
   "macro_cpi",
+  "macro_nfp",
   "etf",
   "exploit",
   "unknown",

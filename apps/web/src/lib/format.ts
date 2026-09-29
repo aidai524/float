@@ -27,6 +27,7 @@ export const EVENT_TYPE_LABEL: Record<string, string> = {
   governance: "治理",
   macro_fomc: "FOMC",
   macro_cpi: "CPI",
+  macro_nfp: "非农就业",
   etf: "ETF",
   exploit: "安全事件",
   unknown: "未分类",

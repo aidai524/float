@@ -47,35 +47,55 @@ const TIER_LABEL: Record<number, { text: string; cls: string }> = {
 };
 
 // 事件类型 → 基准（按样本量加权，跨资产类别汇总）
-const statByType = new Map<string, { n: number; med1h: number | null; pos4h: number | null }>();
+const statByType = new Map<
+  string,
+  { n: number; med1h: number | null; med24h: number | null; pos4h: number | null; pos24h: number | null }
+>();
 {
-  const acc = new Map<string, { n: number; m1: number[]; p4: number[] }>();
+  const acc = new Map<
+    string,
+    { n: number; m1: number[]; m24: number[]; p4: number[]; p24: number[] }
+  >();
   for (const s of stats) {
-    const a = acc.get(s.event_type) ?? { n: 0, m1: [], p4: [] };
+    const a = acc.get(s.event_type) ?? { n: 0, m1: [], m24: [], p4: [], p24: [] };
     a.n += s.n;
-    if (s.median_1h != null) a.m1.push(s.median_1h ?? 0);
-    if (s.pos_4h != null) a.p4.push(s.pos_4h ?? 0);
+    if (s.median_1h != null) a.m1.push(s.median_1h);
+    if (s.median_24h != null) a.m24.push(s.median_24h);
+    if (s.pos_4h != null) a.p4.push(s.pos_4h);
+    if (s.pos_24h != null) a.p24.push(s.pos_24h);
     acc.set(s.event_type, a);
   }
   const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
-  for (const [t, a] of acc) statByType.set(t, { n: a.n, med1h: avg(a.m1), pos4h: avg(a.p4) });
+  for (const [t, a] of acc)
+    statByType.set(t, {
+      n: a.n,
+      med1h: avg(a.m1),
+      med24h: avg(a.m24),
+      pos4h: avg(a.p4),
+      pos24h: avg(a.p24),
+    });
 }
 
 const horizonDays = 14;
-const upcoming = events
-  .filter((e) => {
-    const t = new Date(e.t0).getTime();
-    return t > now && t < now + horizonDays * 86400000;
-  })
-  .sort((a, b) => {
-    const ra = SIGNAL_RANK[a.event_type] ?? 5;
-    const rb = SIGNAL_RANK[b.event_type] ?? 5;
-    if (ra !== rb) return ra - rb;
-    return new Date(a.t0).getTime() - new Date(b.t0).getTime();
-  })
-  .slice(0, 12);
+const upcomingAll = events.filter((e) => {
+  const t = new Date(e.t0).getTime();
+  return t > now && t < now + horizonDays * 86400000;
+});
 
-const withBaseline = upcoming.filter((e) => statByType.has(e.event_type));
+// 分组：宏观（有基准）/ 大额解锁（按金额）/ 其他
+const macroUp = upcomingAll
+  .filter((e) => e.event_type.startsWith("macro"))
+  .sort((a, b) => new Date(a.t0).getTime() - new Date(b.t0).getTime())
+  .slice(0, 5);
+const unlockUp = upcomingAll
+  .filter((e) => e.event_type.startsWith("unlock"))
+  .sort((a, b) => (b.magnitude_usd ?? 0) - (a.magnitude_usd ?? 0))
+  .slice(0, 8);
+const otherUp = upcomingAll.filter(
+  (e) => !e.event_type.startsWith("macro") && !e.event_type.startsWith("unlock"),
+);
+
+// 兼容旧变量名
 
 const measured = events.filter((e) => e.ret_1h != null).length;
 const maxN = stats.reduce((a, s) => Math.max(a, s.n), 0);
@@ -124,72 +144,121 @@ const daysUntil = (t: string) => {
   </div>
 
   <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-    <h2 class="m-0 text-[13px] font-semibold">接下来 {horizonDays} 天 · 按信号强度排序</h2>
+    <h2 class="m-0 text-[13px] font-semibold">接下来 {horizonDays} 天</h2>
     <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
-      排序 = 事件类型的信号强度，再看时间远近。有历史基准的会直接挂出来对照。
+      宏观用官方日历（确切时间），解锁取金额最大的几条——一个 $6M 的解锁比一个 $900 的重要。
     </p>
 
-    {
-      withBaseline.length === 0 && (
-        <p class="mb-3 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-300">
-          ⚠️ 解锁事件已接入（数据来源 CoinMarketCap，免 key），但**历史基准还在积累中**——
-          该源只提供"即将解锁"，没有历史，需要定期轮询累积后才能算出中位数与分位。
-          上币类事件的历史基准已就绪（见上方面板）。
-        </p>
-      )
-    }
-
-    <div class="overflow-x-auto">
+    <h3 class="m-0 mb-2 text-[12px] font-semibold text-[var(--color-acc)]">
+      宏观（有历史基准）
+    </h3>
+    <div class="mb-4 overflow-x-auto">
       <table class="w-full border-collapse text-[13px]">
         <thead>
           <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
-            <th class="px-3 py-2 text-left">信号</th>
             <th class="px-3 py-2 text-left">倒计时</th>
             <th class="px-3 py-2 text-left">时间 (UTC)</th>
-            <th class="px-3 py-2 text-left">代币</th>
-            <th class="px-3 py-2 text-left">类型</th>
-            <th class="px-3 py-2 text-left">标题</th>
-            <th class="px-3 py-2 text-left">规模 / 该类历史</th>
+            <th class="px-3 py-2 text-left">事件</th>
+            <th class="px-3 py-2 text-left">这类事件历史上怎么走（BTC）</th>
           </tr>
         </thead>
         <tbody>
-          {upcoming.map((e) => {
-            const tier = TIER_LABEL[SIGNAL_RANK[e.event_type] ?? 5]!;
+          {macroUp.map((e) => {
             const st = statByType.get(e.event_type);
             return (
               <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
-                <td class="px-3 py-2">
-                  <span class={`rounded px-2 py-[1px] text-[11px] font-semibold ${tier.cls}`}>
-                    {tier.text}
-                  </span>
-                </td>
                 <td class="mono px-3 py-2 text-amber-400">{daysUntil(e.t0)}</td>
-                <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">
-                  {fmtTs(e.t0)}
-                </td>
-                <td class="px-3 py-2 font-semibold">
+                <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">{fmtTs(e.t0)}</td>
+                <td class="px-3 py-2">
                   <a
                     href={`/event/${e.id}`}
                     class="no-underline text-[var(--color-fg)] hover:text-[var(--color-acc)]"
                   >
-                    {e.token_symbol}
+                    {eventTypeLabel(e.event_type)}
                   </a>
                 </td>
-                <td class="mono px-3 py-2 text-[12px]">{eventTypeLabel(e.event_type)}</td>
-                <td class="px-3 py-2">{e.title}</td>
-                <td class="mono px-3 py-2 text-[11px] text-[var(--color-mut)]">
-                  {st
-                    ? `1h 中位 ${pct(st.med1h)} · 上涨 ${st.pos4h == null ? "—" : Math.round(st.pos4h * 100) + "%"}（N=${st.n}）`
-                    : e.magnitude_usd != null
-                      ? `${fmtUsd(e.magnitude_usd)}${e.magnitude_pct != null ? ` · 占供应 ${(e.magnitude_pct * 100).toFixed(2)}%` : ""}${(e.source_detail as any)?.allocation ? ` · ${(e.source_detail as any).allocation}` : ""}`
-                      : "—"}
+                <td class="mono px-3 py-2 text-[12px]">
+                  {st ? (
+                    <span>
+                      1h 中位 <span class={st.med1h != null && st.med1h >= 0 ? "text-emerald-400" : "text-red-400"}>{pct(st.med1h)}</span>
+                      {" · "}
+                      24h 中位 <span class={st.med24h != null && st.med24h >= 0 ? "text-emerald-400" : "text-red-400"}>{pct(st.med24h)}</span>
+                      {" · 上涨 "}
+                      {st.pos24h == null ? "—" : Math.round(st.pos24h * 100) + "%"}
+                      {"（N="}
+                      {st.n})
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
               </tr>
             );
           })}
+          {macroUp.length === 0 && (
+            <tr>
+              <td colspan="4" class="px-3 py-3 text-[12px] text-[var(--color-mut)]">
+                未来 {horizonDays} 天没有宏观事件
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
+
+    <h3 class="m-0 mb-2 text-[12px] font-semibold text-[var(--color-acc)]">
+      大额解锁（按金额取前 {unlockUp.length}）
+    </h3>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[13px]">
+        <thead>
+          <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+            <th class="px-3 py-2 text-left">倒计时</th>
+            <th class="px-3 py-2 text-left">代币</th>
+            <th class="px-3 py-2 text-left">类型</th>
+            <th class="px-3 py-2 text-right">金额</th>
+            <th class="px-3 py-2 text-right">占供应</th>
+            <th class="px-3 py-2 text-left">分配对象</th>
+            <th class="px-3 py-2 text-left">基准</th>
+          </tr>
+        </thead>
+        <tbody>
+          {unlockUp.map((e) => (
+            <tr class="border-b border-[var(--color-line)] hover:bg-[#16223c]">
+              <td class="mono px-3 py-2 text-amber-400">{daysUntil(e.t0)}</td>
+              <td class="px-3 py-2 font-semibold">
+                <a
+                  href={`/event/${e.id}`}
+                  class="no-underline text-[var(--color-fg)] hover:text-[var(--color-acc)]"
+                >
+                  {e.token_symbol}
+                </a>
+              </td>
+              <td class="mono px-3 py-2 text-[12px]">{eventTypeLabel(e.event_type)}</td>
+              <td class="mono px-3 py-2 text-right">{fmtUsd(e.magnitude_usd)}</td>
+              <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                {e.magnitude_pct == null ? "—" : `${(e.magnitude_pct * 100).toFixed(2)}%`}
+              </td>
+              <td class="px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                {(e.source_detail as any)?.allocation ?? "—"}
+              </td>
+              <td class="px-3 py-2 text-[11px] text-[var(--color-mut)]">样本积累中</td>
+            </tr>
+          ))}
+          {unlockUp.length === 0 && (
+            <tr>
+              <td colspan="7" class="px-3 py-3 text-[12px] text-[var(--color-mut)]">
+                未来 {horizonDays} 天没有已知解锁
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+    <p class="mb-0 mt-3 text-[11px] text-[var(--color-mut)]">
+      另有 {otherUp.length} 条其他项目活动（测试网/集成/合作等）未在此列出。
+      解锁的历史基准缺失：免费源只给未来 24 小时，需要累积（见 TODO B6）。
+    </p>
   </section>
 
   <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">

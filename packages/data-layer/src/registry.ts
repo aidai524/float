@@ -9,6 +9,8 @@ import { binanceAdapter } from "./sources/binance";
 import { binanceAnnouncementsAdapter, bybitAnnouncementsAdapter } from "./sources/announcements";
 import { coinMarketCalAdapter } from "./sources/coinmarketcal";
 import { coinMarketCapUnlocksAdapter } from "./sources/coinmarketcap-unlocks";
+import { fredMacroAdapter } from "./sources/fred-macro";
+import { fedFomcAdapter } from "./sources/fed-fomc";
 
 const registry = new Map<string, DataSourceAdapter>();
 
@@ -32,3 +34,5 @@ register(binanceAnnouncementsAdapter);
 register(bybitAnnouncementsAdapter);
 register(coinMarketCalAdapter);
 register(coinMarketCapUnlocksAdapter);
+register(fredMacroAdapter);
+register(fedFomcAdapter);
