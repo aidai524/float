@@ -1,4 +1,8 @@
-# Crypto Event Study Engine
+# Float
+
+> 加密供给侧事件的实测反应参考层 · *The measured reaction layer for crypto supply events*
+
+> **定位与命名见 [POSITIONING.md](./POSITIONING.md)**
 
 加密事件研究引擎：不只是告诉你事件几点发生，而是告诉你这类事件历史上发生后，价格在 5m / 15m / 1h / 4h 实际怎么走、样本多大、可比事件是谁。
 
@@ -6,6 +10,7 @@
 
 ## 文档
 
+- **[POSITIONING.md](./POSITIONING.md)** — 名字、定位、边界与取舍
 - **[PLAN.md](./PLAN.md)** — 完整需求与阶段性计划（Phase 0–8、验收标准、成本）
 - **[DATA-LAYER.md](./DATA-LAYER.md)** — 数据层设计（L0–L4 分层、适配器、契约视图、扩展机制）
 
