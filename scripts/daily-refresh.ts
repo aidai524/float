@@ -19,6 +19,16 @@ import {
   type DB,
 } from "../packages/data-layer/src/index";
 
+// 允许直接 `pnpm daily` / launchd 裸跑：环境变量未注入时，从仓库根的 .env 读取。
+// 显式注入的进程环境优先（loadEnvFile 只在缺失时调用）。
+if (!process.env.SUPABASE_URL) {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // 没有 .env 就继续，下面会给出清晰的缺参报错
+  }
+}
+
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {

@@ -20,6 +20,9 @@ case "$cmd" in
   install)
     PNPM="$(command -v pnpm || true)"
     [ -n "$PNPM" ] || { echo "找不到 pnpm" >&2; exit 1; }
+    # launchd 的 PATH 极简（/usr/bin:/bin:/usr/sbin:/sbin），必须显式带上 node 与 pnpm 所在目录，
+    # 否则 pnpm 的 `#!/usr/bin/env node` 会找不到 node，任务静默失败。
+    NODEBIN="$(dirname "$(command -v node || command -v pnpm)")"
     mkdir -p "$HOME/Library/LaunchAgents" "$ROOT/.devsession"
     cat > "$PLIST" <<PLISTEOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -31,7 +34,7 @@ case "$cmd" in
   <array>
     <string>/bin/bash</string>
     <string>-lc</string>
-    <string>cd "$ROOT" &amp;&amp; ./scripts/devsession.sh touch &amp;&amp; "$PNPM" daily &gt;&gt; "$LOG" 2&gt;&amp;1</string>
+    <string>cd "$ROOT" &amp;&amp; export PATH="$NODEBIN:/opt/homebrew/bin:/usr/local/bin:$PATH" &amp;&amp; [ -f .env ] &amp;&amp; set -a &amp;&amp; . ./.env; set +a; ./scripts/devsession.sh touch &amp;&amp; "$PNPM" daily &gt;&gt; "$LOG" 2&gt;&amp;1</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>StandardOutPath</key><string>$LOG</string>
