@@ -12,33 +12,62 @@
 
 ---
 
-## 1. 新电脑快速开始
+## 1. 换开发机：先把这份清单做完，再开始开发
+
+> **只换开发机。** 测试/部署机（VPS + Cloudflare Worker）不动——**不要**在新机器上装 cron，也**不要**重复部署。
+
+### 前置
+
+- Node ≥ 22、pnpm 12、git
+- GitHub SSH key：`ssh -T git@github.com` 显示 `Hi aidai524!`
+- 可选：`psql`（要跑迁移/回填才需要）；macOS 的 launchd **不要装**（VPS 已在跑）
+
+### 步骤
+
+**1) 克隆**
 
 ```bash
 git clone git@github.com:aidai524/float.git
 cd float
-pnpm install          # 需要 Node >= 22 + pnpm 12
 ```
 
-**`.env` 不在仓库里，必须手动搬过来**（1Password / `scp` / 原来的电脑）。需要的变量见 `.env.example`：
+**2) 建 `.env`（不在仓库里，需安全搬过来：1Password / scp）**
 
-| 变量 | 用途 |
+| 新机器用途 | 需要的变量 |
 |---|---|
-| `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | 数据库（云端唯一数据源） |
-| `SUPABASE_DB_POOLER_URL` | 迁移 / 脚本直连（脚本内批量解析走 psql，避开 PostgREST 8s 超时） |
-| `SUPABASE_ACCESS_TOKEN` / `SUPABASE_PROJECT_REF` | 管理 API |
-| `FRED_API_KEY` / `COINMARKETCAL_API_KEY` / `COINGECKO_API_KEY` | 数据源 |
-| `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` | 部署 Worker |
-| `.supabase-db-pass.txt` | 数据库密码（单独文件，gitignored） |
+| 只写代码 + 本地预览 | `SUPABASE_URL`、`SUPABASE_ANON_KEY` |
+| + 跑脚本/回填 | 再加 `SUPABASE_SERVICE_ROLE_KEY`、`SUPABASE_DB_POOLER_URL`、`FRED_API_KEY`、`COINMARKETCAL_API_KEY`、`COINGECKO_API_KEY` |
+| + 部署 Worker（可选） | 再加 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` |
 
-验证环境：
+格式照 `.env.example`。另外 `.supabase-db-pass.txt`（数据库密码）也是单独文件、gitignored。
+
+**3) 安装依赖**
 
 ```bash
-pnpm probe       # 数据源可达性（本机：除 defillama.com 外都应 ✅）
-pnpm test        # 74 个测试
-pnpm typecheck
-pnpm dev         # 或 pnpm --filter @cee/web dev → http://localhost:4321
+pnpm install
 ```
+
+**4) 一道验证（全绿才算完成）**
+
+```bash
+node -v && pnpm -v      # Node ≥22 / pnpm 12
+pnpm typecheck          # 0 errors
+pnpm test               # 74 passed
+pnpm probe              # 除 defillama.com 外应全 ✅
+pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
+```
+
+**5) 按需（谨慎）**
+
+- 要本地跑迁移/回填：装 `psql`，`scripts/db-migrate.sh`（**会改云端库**）
+- **不要**跑 `scripts/install-daily-cron.sh` / `install-unlocks-cron.sh` —— VPS 已经在定时刷新，重复会冲突
+
+### 完成标准
+
+- [ ] `pnpm test` 全绿、`pnpm typecheck` 0 error
+- [ ] `pnpm dev` 首页能打开且显示数据
+- [ ] `git pull` 无冲突、工作区干净（`git status`）
+- [ ] 没有在本机新增 cron / launchd
 
 ---
 
@@ -120,10 +149,10 @@ dvol_points       83,168
 
 ## 6. 下一步（按优先级）
 
-### P0 — 收尾当前工作（半小时）
-1. **重新部署 Worker**：`pnpm deploy`（会 build web + deploy worker）。当前 `/unlocks` 线上 **404**，因为 Worker 跑的是旧构建。
+### P0 — 收尾当前工作（在**部署/运行机**上做，不是开发机）
+1. **重新部署站点**：`pnpm deploy`（= build web + deploy worker）。线上 `/unlocks` 现在 **404**，因为站点是 SSG，上次构建（在 `unlocks.astro` 之前）没有这个页。**任何代码或数据变化都需要重新构建+部署才上线**。
 2. **确认 VPS 两个 cron**：`scripts/install-daily-cron.sh status` + `crontab -l`（应有 `float-daily` 和 `float-unlocks`）。
-3. 提交/推送任何未提交改动（当前工作区是干净的）。
+3. 确认工作区干净、已推送（当前 `048d15a` 是干净的）。
 
 ### P1 — 让解锁信号真的有用（Phase 4.2/4.3 v2）
 现在 R²≈0，问题可能是：把「日度线性排放」和「悬崖解锁」混在一起、没做流动性过滤、没分接收方。
