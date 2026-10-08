@@ -458,18 +458,26 @@ interface DataSource {
   - 回填 BTC/ETH DVOL 各 41,584 点（2022-01 起，1h 分辨率）
   - 78 个宏观事件算出惊讶度
   - **发现**：FOMC 惊讶中位 **1.31×**（市场系统性低估波动）；非农 **0.74×**（系统性高估）；CPI 1.09×（定价合理）
-- 4.2 **解锁归一化指标**：每 1% 供应稀释对应的历史反应斜率
-- 4.3 **按接收方分类**（Team / Seed / Early Backers / Community / Treasury / Staking / Ecosystem）的反应差异
+- 4.2 **解锁归一化指标（v2）** ✅：稀释改用「占流通量 float」（缺失回退占最大供应），反应剔除 BTC 同期收益
+  - 新增 `event_expectation` 表 + `scripts/compute-expectations.ts`（BTC 1m 基准 + 事前 30 天日波动 → excess / z）
+  - 契约：`api.event_expectation_v1`、`api.unlock_cohort_v2`、`api.unlock_float_stats_v2`、`api.unlock_category_stats_v2`、`api.unlock_slope_v2`
+  - **实测（N=1,363，float ≥ 0.5%，流动性达标）**：每 1% float 稀释 → 4h 市场调整后 **−0.046%（R²=0.006）**，与原始口径（−0.048%，R²=0.006）几乎一样
+  - 分桶中位数（4h 调整后）：0.5–1% −0.05% · 1–2% −0.08% · 2–5% −0.11% · 5–10% +0.12% · ≥10% **−0.41%**（N=109，z 中位仅 −0.05σ）
+  - **结论：解锁在 4h 尺度没有系统性砸盘；只有 ≥10% 的巨型稀释方向向下。斜率解释力仍低，产品价值改为「分布 + 这次偏离了多少」，不再拿 R² 当卖点**
+- 4.3 **按接收方分类（v2）** ✅：接收方表接入市场调整口径（`unlock_category_stats_v2`）
 - 4.4 **上币特征化预期**：代币类别 × 市值档 × 交易所层级 → 预期区间
-- 4.5 契约扩展：`api.event_expectation_v1`、`api.surprise_v1`
-- 4.6 前端：事件详情显示"实际 vs 预期"；总览支持按"惊讶度"排序
+  - 阻塞：`tokens.market_cap` 为空（需 6.5 CoinGecko）；当前 listing 全部来自 Binance，交易所层级维度退化
+  - 可用替代：代币类别 × ADV 流动性档
+- 4.5 契约扩展 ✅：`api.event_expectation_v1` 已建立；DVOL 惊讶度在 `events_v1`（未单独立 `api.surprise_v1`）
+- 4.6 前端 ✅：事件详情显示 DVOL 惊讶度 + 「市场调整（vs BTC）」面板；`/unlocks` 主指标改为 float 稀释 + 剔除 BTC + z
 
 **验收**
 
-- [ ] 任一宏观事件显示隐含波动、实际波动、超预期倍数
-- [ ] 解锁显示"每 1% 稀释的历史斜率"及其样本量
-- [ ] 按接收方的反应差异有 N、口径版本与置信说明
-- [ ] 惊讶度可复算，口径写入 `methodology_version`
+- [x] 任一宏观事件显示隐含波动、实际波动、超预期倍数
+- [x] 解锁显示归一化指标及其样本量（v2：float 稀释 + 市场调整）
+- [x] 按接收方的反应差异有 N、口径版本与置信说明
+- [x] 惊讶度可复算，口径写入 `methodology_version`（expectation = v2）
+- [ ] 4.4 上币预期区间（依赖 6.5 市值数据）
 
 **依赖**：无（Deribit API 免费，已实测可用）
 
