@@ -16,6 +16,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   baselineDailyVol,
   computeExcess,
+  computeLongWindows,
   EXPECTATION_VERSION,
 } from "../packages/data-layer/src/expectations";
 import { DAY_MS, MINUTE, type Candle } from "../packages/data-layer/src/reactions";
@@ -189,25 +190,41 @@ async function main() {
     `市场调整计算 ${scope.length} 条 · ${typePrefix}* · float ≥ ${(minFloat * 100).toFixed(2)}% · 基准 ${BENCHMARK}`,
   );
 
-  // ---------- 1) 事前 30 天日波动（按需懒加载，LRU 缓存） ----------
+  // ---------- 1) 事前 30 天日波动 + 长窗口用 1h K 线（按事件懒加载） ----------
   const volCache = new LruCache<Candle[] | null>(40);
   let volOk = 0;
-  async function baselineVolFor(symbol: string, t0: number): Promise<number | null> {
+  async function baselineWindowFor(
+    symbol: string,
+    t0: number,
+  ): Promise<{ hourly: Candle[] | null; vol: number | null }> {
     const key = `${symbol}|${new Date(t0).toISOString().slice(0, 10)}`;
     let hourly = volCache.get(key);
     if (hourly === undefined) {
       try {
-        hourly = await fetchKlines(`${symbol}USDT`, "1h", t0 - 31 * DAY_MS, t0);
+        // 覆盖事前 31 天 + 事后 8 天（长窗口 7d 需要事后数据）
+        hourly = await fetchKlines(`${symbol}USDT`, "1h", t0 - 31 * DAY_MS, t0 + 8 * DAY_MS);
       } catch {
         hourly = null;
       }
       volCache.set(key, hourly);
       await sleep(100);
     }
-    return hourly ? baselineDailyVol(hourly, t0) : null;
+    return { hourly, vol: hourly ? baselineDailyVol(hourly, t0) : null };
   }
 
-  // ---------- 2) 逐事件：BTC 基准 + 超常收益 ----------
+  // BTC 1h：全区间一次取完（长窗口与事前漂移的基准）
+  const scopeTimes = scope.map((e) => new Date(e.t0).getTime());
+  console.log("  拉取 BTC 1h 基准序列…");
+  const btc1h =
+    (await fetchKlines(
+      BENCHMARK,
+      "1h",
+      Math.min(...scopeTimes) - 4 * DAY_MS,
+      Math.max(...scopeTimes) + 8 * DAY_MS,
+    )) ?? [];
+  console.log(`  BTC 1h ${btc1h.length} 根`);
+
+  // ---------- 2) 逐事件：BTC 1m（短窗）+ 长窗口 + 事前漂移 ----------
   const btcCache = new LruCache<Candle[]>(200);
   const rows: Array<Record<string, unknown>> = [];
   let computed = 0;
@@ -250,6 +267,9 @@ async function main() {
       continue;
     }
 
+    const { hourly, vol } = await baselineWindowFor(e.token_symbol, new Date(e.t0).getTime());
+    if (vol != null) volOk++;
+
     const x = computeExcess({
       bench1m: bench,
       anchor,
@@ -257,9 +277,15 @@ async function main() {
       tokenRet1h: r.ret_1h,
       tokenRet4h: r.ret_4h,
       tokenRet24h: r.ret_24h,
-      baselineVolDaily: await baselineVolFor(e.token_symbol, new Date(e.t0).getTime()),
+      baselineVolDaily: vol,
     });
-    if (x.baselineVolDaily != null) volOk++;
+    const long = computeLongWindows({
+      token1h: hourly ?? [],
+      bench1h: btc1h,
+      t0: new Date(e.t0).getTime(),
+      anchor,
+      baselineVolDaily: vol,
+    });
 
     rows.push({
       event_id: e.id,
@@ -276,6 +302,16 @@ async function main() {
       z_1h: x.z1h,
       z_4h: x.z4h,
       z_24h: x.z24h,
+      pre_ret_24h: long.preRet24h,
+      pre_excess_24h: long.preExcess24h,
+      pre_ret_72h: long.preRet72h,
+      pre_excess_72h: long.preExcess72h,
+      ret_72h: long.ret72h,
+      excess_ret_72h: long.excessRet72h,
+      z_72h: long.z72h,
+      ret_168h: long.ret168h,
+      excess_ret_168h: long.excessRet168h,
+      z_168h: long.z168h,
       computed_at: new Date().toISOString(),
     });
     computed++;
@@ -290,7 +326,7 @@ async function main() {
     if (computed % 50 === 0) {
       const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
       console.log(
-        `  [${computed}/${scope.length}] #${e.id} ${e.token_symbol} 4h excess ${pct(x.excessRet4h)} · z ${x.z4h == null ? "—" : x.z4h.toFixed(2)}σ`,
+        `  [${computed}/${scope.length}] #${e.id} ${e.token_symbol} pre3d ${pct(long.preExcess72h)} · 4h ${pct(x.excessRet4h)} · 7d ${pct(long.excessRet168h)}`,
       );
     }
   }

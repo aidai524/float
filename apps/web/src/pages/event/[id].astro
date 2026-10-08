@@ -58,6 +58,16 @@ const zReading = (z: number | null): string => {
 const excessRows = expectation
   ? [
       {
+        label: "前 3 天（事前）",
+        ret: expectation.pre_ret_72h,
+        bench:
+          expectation.pre_ret_72h != null && expectation.pre_excess_72h != null
+            ? expectation.pre_ret_72h - expectation.pre_excess_72h
+            : null,
+        excess: expectation.pre_excess_72h,
+        z: null,
+      },
+      {
         label: "1h",
         ret: e.ret_1h,
         bench: expectation.bench_ret_1h,
@@ -77,6 +87,16 @@ const excessRows = expectation
         bench: expectation.bench_ret_24h,
         excess: expectation.excess_ret_24h,
         z: expectation.z_24h,
+      },
+      {
+        label: "7 天",
+        ret: expectation.ret_168h,
+        bench:
+          expectation.ret_168h != null && expectation.excess_ret_168h != null
+            ? expectation.ret_168h - expectation.excess_ret_168h
+            : null,
+        excess: expectation.excess_ret_168h,
+        z: expectation.z_168h,
       },
     ]
   : [];

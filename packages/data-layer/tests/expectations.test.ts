@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   baselineDailyVol,
   computeExcess,
+  computeLongWindows,
   BASELINE_WINDOW_DAYS,
   EXPECTATION_VERSION,
 } from "../src/expectations";
@@ -155,5 +156,45 @@ describe("computeExcess", () => {
 
   it("版本号固定为 v2", () => {
     expect(EXPECTATION_VERSION).toBe("v2");
+  });
+});
+
+describe("computeLongWindows", () => {
+  const VOL = 0.05;
+  // 小时线：close = 100 + 小时序号（从 t0-100h 开始），基准平在 100；含 t0 到 t0+8d
+  const FROM = T0 - 100 * 3600_000;
+  const token1h = makeCandles(FROM, 100 + 24 * 8, (i) => 100 + i, 3600_000);
+  const bench1h = makeCandles(FROM, 100 + 24 * 8, () => 100, 3600_000);
+
+  it("pre 窗口 = [t0−Δ, t0−1h]，不包含事件所在小时", () => {
+    const r = computeLongWindows({ token1h, bench1h, t0: T0, anchor: T0, baselineVolDaily: VOL });
+    // 28 与 99 是相对于 FROM 的小时序号（t0 是第 100 根）
+    const expected = (100 + 99) / (100 + 100 - 72) - 1;
+    expect(r.preRet72h).toBeCloseTo(expected, 12);
+    expect(r.preExcess72h).toBeCloseTo(expected, 12);
+    expect(r.preRet24h).toBeCloseTo((100 + 99) / (100 + 100 - 24) - 1, 12);
+  });
+
+  it("post 窗口 = [anchor, anchor+Δ]，含 z 标准化", () => {
+    const r = computeLongWindows({ token1h, bench1h, t0: T0, anchor: T0, baselineVolDaily: VOL });
+    expect(r.ret72h).toBeCloseTo((100 + 100 + 72) / (100 + 100) - 1, 12);
+    expect(r.excessRet72h).toBeCloseTo(r.ret72h!, 12);
+    expect(r.z72h).toBeCloseTo(r.excessRet72h! / (VOL * Math.sqrt(3)), 10);
+    expect(r.z168h).toBeCloseTo(r.excessRet168h! / (VOL * Math.sqrt(7)), 10);
+  });
+
+  it("缺少未来数据时 post 为 null，不回退", () => {
+    const truncated = token1h.filter((c) => c.ts <= T0);
+    const r = computeLongWindows({
+      token1h: truncated,
+      bench1h,
+      t0: T0,
+      anchor: T0,
+      baselineVolDaily: VOL,
+    });
+    expect(r.ret72h).toBeNull();
+    expect(r.excessRet72h).toBeNull();
+    expect(r.z72h).toBeNull();
+    expect(r.preRet24h).not.toBeNull();
   });
 });

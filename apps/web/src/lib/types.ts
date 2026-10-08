@@ -175,6 +175,16 @@ export interface EventExpectationV1 {
   z_4h: number | null;
   z_24h: number | null;
   methodology_version: string;
+  pre_ret_24h: number | null;
+  pre_excess_24h: number | null;
+  pre_ret_72h: number | null;
+  pre_excess_72h: number | null;
+  ret_72h: number | null;
+  excess_ret_72h: number | null;
+  z_72h: number | null;
+  ret_168h: number | null;
+  excess_ret_168h: number | null;
+  z_168h: number | null;
 }
 
 /** api.unlock_float_stats_v2 —— 解锁按 float 稀释分桶（市场调整后） */
@@ -192,6 +202,10 @@ export interface UnlockFloatStat {
   median_ret_24h: number | null;
   median_excess_24h: number | null;
   median_z_24h: number | null;
+  median_pre_excess_24h: number | null;
+  median_pre_excess_72h: number | null;
+  median_excess_72h: number | null;
+  median_excess_168h: number | null;
 }
 
 /** api.unlock_category_stats_v2 —— 解锁按接收方（市场调整后） */
@@ -209,6 +223,10 @@ export interface UnlockCategoryStatV2 {
   median_ret_24h: number | null;
   median_excess_24h: number | null;
   median_z_24h: number | null;
+  median_pre_excess_24h: number | null;
+  median_pre_excess_72h: number | null;
+  median_excess_72h: number | null;
+  median_excess_168h: number | null;
 }
 
 /** api.unlock_slope_v2 —— 每 1% float 稀释对应的市场调整后 4h 收益 */
@@ -221,4 +239,8 @@ export interface UnlockSlopeV2 {
   r2_ret: number | null;
   median_float_pct: number | null;
   median_excess_4h: number | null;
+  slope_pre_excess_72h_per_pct: number | null;
+  r2_pre_excess_72h: number | null;
+  slope_excess_168h_per_pct: number | null;
+  r2_excess_168h: number | null;
 }

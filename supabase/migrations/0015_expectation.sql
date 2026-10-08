@@ -9,12 +9,13 @@
 --   3) z_h          = excess_ret_h / (事件前 30 天日波动 × sqrt(h/24h))
 --                     「相对自身正常波动，偏离了多少个 sigma」
 --
--- 为什么需要：
---   v1 用「占最大供应」+ 原始收益，稀释桶中位数全 ≈ 0（市场 beta 噪声盖过事件效应）。
---   v2 用 float 稀释（探索中 R² 提升约 5 倍）+ 市场调整，把事件效应从 beta 里拆出来。
+-- 时间窗：
+--   post 1h/4h/24h  = 1m K 线高精度（compute-expectations 取 BTC 1m）
+--   post 72h/168h   = 1h K 线（±1h）
+--   pre 24h/72h     = [t0−Δ, t0−1h]，刻意排除事件所在小时，衡量「事前漂移」
 --
--- 数据：excess/z 由 scripts/compute-expectations.ts 写入 event_expectation（口径 v2）。
--- 契约：v1 视图保留不动；v2 是新增视图，不改变既有列语义。
+-- 数据：由 scripts/compute-expectations.ts 写入 event_expectation（口径 v2）。
+-- 契约：v1 视图保留不动；v2 是新增视图，不改变既有列语义（只追加列）。
 -- ============================================================
 
 -- ---------- 工具：float 稀释（占流通量），缺失时回退占最大供应 ----------
@@ -49,9 +50,32 @@ create table if not exists event_expectation (
   z_1h                numeric,
   z_4h                numeric,
   z_24h               numeric,
+  -- 长窗口 + 事前漂移（1h K 线分辨率）
+  pre_ret_24h         numeric,
+  pre_excess_24h      numeric,
+  pre_ret_72h         numeric,
+  pre_excess_72h      numeric,
+  ret_72h             numeric,
+  excess_ret_72h      numeric,
+  z_72h               numeric,
+  ret_168h            numeric,
+  excess_ret_168h     numeric,
+  z_168h              numeric,
   computed_at         timestamptz not null default now(),
   primary key (event_id, methodology_version)
 );
+
+-- 已建过表的库补齐新列（幂等）
+alter table event_expectation add column if not exists pre_ret_24h numeric;
+alter table event_expectation add column if not exists pre_excess_24h numeric;
+alter table event_expectation add column if not exists pre_ret_72h numeric;
+alter table event_expectation add column if not exists pre_excess_72h numeric;
+alter table event_expectation add column if not exists ret_72h numeric;
+alter table event_expectation add column if not exists excess_ret_72h numeric;
+alter table event_expectation add column if not exists z_72h numeric;
+alter table event_expectation add column if not exists ret_168h numeric;
+alter table event_expectation add column if not exists excess_ret_168h numeric;
+alter table event_expectation add column if not exists z_168h numeric;
 
 create index if not exists idx_expectation_version
   on event_expectation (methodology_version, benchmark);
@@ -72,7 +96,17 @@ select
   x.z_1h,
   x.z_4h,
   x.z_24h,
-  x.methodology_version
+  x.methodology_version,
+  x.pre_ret_24h,
+  x.pre_excess_24h,
+  x.pre_ret_72h,
+  x.pre_excess_72h,
+  x.ret_72h,
+  x.excess_ret_72h,
+  x.z_72h,
+  x.ret_168h,
+  x.excess_ret_168h,
+  x.z_168h
 from event_expectation x
 where x.methodology_version = 'v2';
 
@@ -159,7 +193,11 @@ select
   round((count(*) filter (where x.excess_ret_4h > 0))::numeric / nullif(count(x.excess_ret_4h), 0), 4) as pos_excess_4h,
   round(percentile_cont(0.5) within group (order by r.ret_24h)::numeric, 5) as median_ret_24h,
   round(percentile_cont(0.5) within group (order by x.excess_ret_24h)::numeric, 5) as median_excess_24h,
-  round(percentile_cont(0.5) within group (order by x.z_24h)::numeric, 3) as median_z_24h
+  round(percentile_cont(0.5) within group (order by x.z_24h)::numeric, 3) as median_z_24h,
+  round(percentile_cont(0.5) within group (order by x.pre_excess_24h)::numeric, 5) as median_pre_excess_24h,
+  round(percentile_cont(0.5) within group (order by x.pre_excess_72h)::numeric, 5) as median_pre_excess_72h,
+  round(percentile_cont(0.5) within group (order by x.excess_ret_72h)::numeric, 5) as median_excess_72h,
+  round(percentile_cont(0.5) within group (order by x.excess_ret_168h)::numeric, 5) as median_excess_168h
 from events e
 join event_reactions r
   on r.event_id = e.id
@@ -195,7 +233,11 @@ select
   round((count(*) filter (where x.excess_ret_4h > 0))::numeric / nullif(count(x.excess_ret_4h), 0), 4) as pos_excess_4h,
   round(percentile_cont(0.5) within group (order by r.ret_24h)::numeric, 5) as median_ret_24h,
   round(percentile_cont(0.5) within group (order by x.excess_ret_24h)::numeric, 5) as median_excess_24h,
-  round(percentile_cont(0.5) within group (order by x.z_24h)::numeric, 3) as median_z_24h
+  round(percentile_cont(0.5) within group (order by x.z_24h)::numeric, 3) as median_z_24h,
+  round(percentile_cont(0.5) within group (order by x.pre_excess_24h)::numeric, 5) as median_pre_excess_24h,
+  round(percentile_cont(0.5) within group (order by x.pre_excess_72h)::numeric, 5) as median_pre_excess_72h,
+  round(percentile_cont(0.5) within group (order by x.excess_ret_72h)::numeric, 5) as median_excess_72h,
+  round(percentile_cont(0.5) within group (order by x.excess_ret_168h)::numeric, 5) as median_excess_168h
 from events e
 join event_reactions r
   on r.event_id = e.id
@@ -256,7 +298,39 @@ select
       e.magnitude_pct
     ) * 100
   )::numeric, 4)                                                          as median_float_pct,
-  round(percentile_cont(0.5) within group (order by x.excess_ret_4h)::numeric, 5) as median_excess_4h
+  round(percentile_cont(0.5) within group (order by x.excess_ret_4h)::numeric, 5) as median_excess_4h,
+  round(regr_slope(
+    x.pre_excess_72h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 6)                                                          as slope_pre_excess_72h_per_pct,
+  round(regr_r2(
+    x.pre_excess_72h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 4)                                                          as r2_pre_excess_72h,
+  round(regr_slope(
+    x.excess_ret_168h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 6)                                                          as slope_excess_168h_per_pct,
+  round(regr_r2(
+    x.excess_ret_168h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 4)                                                          as r2_excess_168h
 from events e
 join event_reactions r
   on r.event_id = e.id

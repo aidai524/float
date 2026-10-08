@@ -68,6 +68,20 @@ export interface ExcessSet {
   z24h: number | null;
 }
 
+/** 长窗口（1h K 线分辨率，±1h）；pre = 事件前漂移，post = 解锁后漂移 */
+export interface LongWindowSet {
+  preRet24h: number | null;
+  preExcess24h: number | null;
+  preRet72h: number | null;
+  preExcess72h: number | null;
+  ret72h: number | null;
+  excessRet72h: number | null;
+  z72h: number | null;
+  ret168h: number | null;
+  excessRet168h: number | null;
+  z168h: number | null;
+}
+
 export interface ComputeExcessOptions {
   /** 覆盖 [anchor-1h, anchor+25h] 的基准 1m K 线（如 BTCUSDT） */
   bench1m: Candle[];
@@ -96,8 +110,7 @@ function zScore(excess: number | null, minutes: number, dailyVol: number | null)
 /**
  * 计算基准收益、超常收益（市场调整后）与 z 值。
  * 任一输入缺失时对应字段为 null，绝不回退成 0。
- */
-export function computeExcess(opts: ComputeExcessOptions): ExcessSet {
+ */ export function computeExcess(opts: ComputeExcessOptions): ExcessSet {
   const bench = [...opts.bench1m].filter((c) => c.close > 0).sort((a, b) => a.ts - b.ts);
   const base = benchmarkBase(bench, opts.anchor, opts.baseAfterT0);
 
@@ -131,5 +144,73 @@ export function computeExcess(opts: ComputeExcessOptions): ExcessSet {
     z1h: h1.z,
     z4h: h4.z,
     z24h: h24.z,
+  };
+}
+
+/** 长窗口端点允许的偏差（1h K 线分辨率） */
+export const LONG_TOLERANCE_MS = 90 * MINUTE;
+
+/** 最后一根「时间 ≤ target 且在容差内」的 K 线收盘价；否则 null（不静默回退） */
+function closeAt(candles: Candle[], target: number, tolMs: number): number | null {
+  const c = lastAtOrBefore(candles, target);
+  if (!c || target - c.ts > tolMs) return null;
+  return c.close;
+}
+
+/**
+ * 长窗口：事件前漂移（pre）与解锁后漂移（post），用 1h K 线（±1h 分辨率）。
+ *
+ * pre 窗口为 [t0−Δ, t0−1h]——刻意排除包含事件的那根小时线，避免前视；
+ * post 窗口为 [anchor, anchor+Δ]。两者都减去 BTC 同期收益。
+ */
+export function computeLongWindows(opts: {
+  token1h: Candle[];
+  bench1h: Candle[];
+  t0: number;
+  anchor: number;
+  baselineVolDaily: number | null;
+}): LongWindowSet {
+  const token = [...opts.token1h].filter((c) => c.close > 0).sort((a, b) => a.ts - b.ts);
+  const bench = [...opts.bench1h].filter((c) => c.close > 0).sort((a, b) => a.ts - b.ts);
+
+  const windowRet = (candles: Candle[], from: number, to: number): number | null => {
+    const a = closeAt(candles, from, LONG_TOLERANCE_MS);
+    const b = closeAt(candles, to, LONG_TOLERANCE_MS);
+    return a != null && b != null && a > 0 ? b / a - 1 : null;
+  };
+
+  const pre = (hours: number) => {
+    const from = opts.t0 - hours * 3600_000;
+    const to = opts.t0 - 3600_000; // 排除事件所在小时
+    const ret = windowRet(token, from, to);
+    const b = windowRet(bench, from, to);
+    return { ret, excess: ret != null && b != null ? ret - b : null };
+  };
+
+  const post = (hours: number) => {
+    const from = opts.anchor;
+    const to = opts.anchor + hours * 3600_000;
+    const ret = windowRet(token, from, to);
+    const b = windowRet(bench, from, to);
+    const excess = ret != null && b != null ? ret - b : null;
+    return { ret, excess, z: zScore(excess, hours * 60, opts.baselineVolDaily) };
+  };
+
+  const pre24 = pre(24);
+  const pre72 = pre(72);
+  const post72 = post(72);
+  const post168 = post(168);
+
+  return {
+    preRet24h: pre24.ret,
+    preExcess24h: pre24.excess,
+    preRet72h: pre72.ret,
+    preExcess72h: pre72.excess,
+    ret72h: post72.ret,
+    excessRet72h: post72.excess,
+    z72h: post72.z,
+    ret168h: post168.ret,
+    excessRet168h: post168.excess,
+    z168h: post168.z,
   };
 }

@@ -84,7 +84,9 @@ const CATEGORY_LABEL: Record<string, string> = {
         </div>
         <div class="mt-1 text-[11px] text-[var(--color-mut)]">
           对照：不剔除 BTC 的原始斜率 {pctSigned(slope.slope_ret_4h_per_pct)}（R² ={" "}
-          {num(slope.r2_ret)}）
+          {num(slope.r2_ret)}） · 事前 3 天斜率 {pctSigned(slope.slope_pre_excess_72h_per_pct)}
+          （R² = {num(slope.r2_pre_excess_72h)}） · 解锁后 7 天斜率{" "}
+          {pctSigned(slope.slope_excess_168h_per_pct)}（R² = {num(slope.r2_excess_168h)}）
         </div>
       </section>
     )
@@ -102,12 +104,13 @@ const CATEGORY_LABEL: Record<string, string> = {
             <th class="py-1 font-normal">稀释</th>
             <th class="py-1 text-right font-normal">N（有调整）</th>
             <th class="py-1 text-right font-normal">平均 float</th>
-            <th class="py-1 text-right font-normal">4h 原始</th>
+            <th class="py-1 text-right font-normal">前 3 天</th>
             <th class="py-1 text-right font-normal">4h 调整后</th>
             <th class="py-1 text-right font-normal">4h 25–75</th>
+            <th class="py-1 text-right font-normal">24h 调整后</th>
+            <th class="py-1 text-right font-normal">7 天调整后</th>
             <th class="py-1 text-right font-normal">z 中位</th>
             <th class="py-1 text-right font-normal">4h 上涨占比</th>
-            <th class="py-1 text-right font-normal">24h 调整后</th>
           </tr>
         </thead>
         <tbody>
@@ -119,8 +122,8 @@ const CATEGORY_LABEL: Record<string, string> = {
                   {d.n_excess} / {d.n}
                 </td>
                 <td class="py-1 text-right">{pctPlain(d.avg_float_pct)}</td>
-                <td class={`py-1 text-right ${cls(d.median_ret_4h)}`}>
-                  {pctSigned(d.median_ret_4h)}
+                <td class={`py-1 text-right ${cls(d.median_pre_excess_72h)}`}>
+                  {pctSigned(d.median_pre_excess_72h)}
                 </td>
                 <td class={`py-1 text-right font-semibold ${cls(d.median_excess_4h)}`}>
                   {pctSigned(d.median_excess_4h)}
@@ -128,18 +131,21 @@ const CATEGORY_LABEL: Record<string, string> = {
                 <td class="py-1 text-right text-[var(--color-mut)]">
                   {pctSigned(d.p25_excess_4h, 1)} ~ {pctSigned(d.p75_excess_4h, 1)}
                 </td>
-                <td class={`py-1 text-right ${zCls(d.median_z_4h)}`}>{zFmt(d.median_z_4h)}</td>
-                <td class="py-1 text-right">{pctPlain(d.pos_excess_4h, 0)}</td>
                 <td class={`py-1 text-right ${cls(d.median_excess_24h)}`}>
                   {pctSigned(d.median_excess_24h)}
                 </td>
+                <td class={`py-1 text-right ${cls(d.median_excess_168h)}`}>
+                  {pctSigned(d.median_excess_168h)}
+                </td>
+                <td class={`py-1 text-right ${zCls(d.median_z_4h)}`}>{zFmt(d.median_z_4h)}</td>
+                <td class="py-1 text-right">{pctPlain(d.pos_excess_4h, 0)}</td>
               </tr>
             ))
           }
           {
             floatSorted.length === 0 && (
               <tr>
-                <td colspan="9" class="py-2 text-[var(--color-mut)]">
+                <td colspan="10" class="py-2 text-[var(--color-mut)]">
                   样本积累中
                 </td>
               </tr>
@@ -159,10 +165,12 @@ const CATEGORY_LABEL: Record<string, string> = {
             <th class="py-1 font-normal">接收方</th>
             <th class="py-1 text-right font-normal">N（有调整）</th>
             <th class="py-1 text-right font-normal">平均 float</th>
+            <th class="py-1 text-right font-normal">前 3 天</th>
             <th class="py-1 text-right font-normal">4h 调整后</th>
             <th class="py-1 text-right font-normal">4h 25–75</th>
-            <th class="py-1 text-right font-normal">z 中位</th>
             <th class="py-1 text-right font-normal">24h 调整后</th>
+            <th class="py-1 text-right font-normal">7 天调整后</th>
+            <th class="py-1 text-right font-normal">z 中位</th>
           </tr>
         </thead>
         <tbody>
@@ -174,23 +182,29 @@ const CATEGORY_LABEL: Record<string, string> = {
                   {c.n_excess} / {c.n}
                 </td>
                 <td class="py-1 text-right">{pctPlain(c.avg_float_pct)}</td>
+                <td class={`py-1 text-right ${cls(c.median_pre_excess_72h)}`}>
+                  {pctSigned(c.median_pre_excess_72h)}
+                </td>
                 <td class={`py-1 text-right font-semibold ${cls(c.median_excess_4h)}`}>
                   {pctSigned(c.median_excess_4h)}
                 </td>
                 <td class="py-1 text-right text-[var(--color-mut)]">
                   {pctSigned(c.p25_excess_4h, 1)} ~ {pctSigned(c.p75_excess_4h, 1)}
                 </td>
-                <td class={`py-1 text-right ${zCls(c.median_z_4h)}`}>{zFmt(c.median_z_4h)}</td>
                 <td class={`py-1 text-right ${cls(c.median_excess_24h)}`}>
                   {pctSigned(c.median_excess_24h)}
                 </td>
+                <td class={`py-1 text-right ${cls(c.median_excess_168h)}`}>
+                  {pctSigned(c.median_excess_168h)}
+                </td>
+                <td class={`py-1 text-right ${zCls(c.median_z_4h)}`}>{zFmt(c.median_z_4h)}</td>
               </tr>
             ))
           }
           {
             categories.length === 0 && (
               <tr>
-                <td colspan="7" class="py-2 text-[var(--color-mut)]">
+                <td colspan="9" class="py-2 text-[var(--color-mut)]">
                   样本积累中
                 </td>
               </tr>
