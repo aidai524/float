@@ -24,6 +24,8 @@ export default tseslint.config(
         console: "readonly",
         URL: "readonly",
         __dirname: "readonly",
+        // 无头浏览器脚本在 page.evaluate 回调里使用浏览器全局
+        document: "readonly",
       },
     },
   },
