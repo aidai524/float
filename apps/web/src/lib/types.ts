@@ -158,3 +158,67 @@ export interface UnlockSlope {
   median_ret_4h: number | null;
   median_pct: number | null;
 }
+
+/** api.event_expectation_v1 —— 单事件的市场调整反应与标准化（口径 v2） */
+export interface EventExpectationV1 {
+  event_id: number;
+  benchmark: string;
+  anchor_ts: string;
+  bench_ret_1h: number | null;
+  bench_ret_4h: number | null;
+  bench_ret_24h: number | null;
+  excess_ret_1h: number | null;
+  excess_ret_4h: number | null;
+  excess_ret_24h: number | null;
+  baseline_vol_daily: number | null;
+  z_1h: number | null;
+  z_4h: number | null;
+  z_24h: number | null;
+  methodology_version: string;
+}
+
+/** api.unlock_float_stats_v2 —— 解锁按 float 稀释分桶（市场调整后） */
+export interface UnlockFloatStat {
+  bucket: string;
+  n: number;
+  n_excess: number;
+  avg_float_pct: number | null;
+  median_ret_4h: number | null;
+  median_excess_4h: number | null;
+  p25_excess_4h: number | null;
+  p75_excess_4h: number | null;
+  median_z_4h: number | null;
+  pos_excess_4h: number | null;
+  median_ret_24h: number | null;
+  median_excess_24h: number | null;
+  median_z_24h: number | null;
+}
+
+/** api.unlock_category_stats_v2 —— 解锁按接收方（市场调整后） */
+export interface UnlockCategoryStatV2 {
+  category: string;
+  n: number;
+  n_excess: number;
+  avg_float_pct: number | null;
+  median_ret_4h: number | null;
+  median_excess_4h: number | null;
+  p25_excess_4h: number | null;
+  p75_excess_4h: number | null;
+  median_z_4h: number | null;
+  pos_excess_4h: number | null;
+  median_ret_24h: number | null;
+  median_excess_24h: number | null;
+  median_z_24h: number | null;
+}
+
+/** api.unlock_slope_v2 —— 每 1% float 稀释对应的市场调整后 4h 收益 */
+export interface UnlockSlopeV2 {
+  n: number;
+  n_excess: number;
+  slope_excess_4h_per_pct: number | null;
+  r2: number | null;
+  slope_ret_4h_per_pct: number | null;
+  r2_ret: number | null;
+  median_float_pct: number | null;
+  median_excess_4h: number | null;
+}

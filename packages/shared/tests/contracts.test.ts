@@ -14,6 +14,13 @@ import {
   EVENT_COHORT_V1_COLUMNS,
   EVENT_TYPE_STATS_V1_COLUMNS,
 } from "../src/index";
+import {
+  EVENT_EXPECTATION_V1_COLUMNS,
+  UNLOCK_CATEGORY_STATS_V2_COLUMNS,
+  UNLOCK_COHORT_V2_COLUMNS,
+  UNLOCK_FLOAT_STATS_V2_COLUMNS,
+  UNLOCK_SLOPE_V2_COLUMNS,
+} from "../src/index";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = resolve(here, "../../../supabase/migrations");
@@ -114,5 +121,31 @@ describe("契约：api.* 视图列与 zod schema 一致", () => {
     expect(extractViewColumns(SQL, "api.category_stats_v1")).toEqual([
       ...CATEGORY_STATS_V1_COLUMNS,
     ]);
+  });
+
+  it("api.event_expectation_v1", () => {
+    expect(extractViewColumns(SQL, "api.event_expectation_v1")).toEqual([
+      ...EVENT_EXPECTATION_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.unlock_cohort_v2", () => {
+    expect(extractViewColumns(SQL, "api.unlock_cohort_v2")).toEqual([...UNLOCK_COHORT_V2_COLUMNS]);
+  });
+
+  it("api.unlock_float_stats_v2", () => {
+    expect(extractViewColumns(SQL, "api.unlock_float_stats_v2")).toEqual([
+      ...UNLOCK_FLOAT_STATS_V2_COLUMNS,
+    ]);
+  });
+
+  it("api.unlock_category_stats_v2", () => {
+    expect(extractViewColumns(SQL, "api.unlock_category_stats_v2")).toEqual([
+      ...UNLOCK_CATEGORY_STATS_V2_COLUMNS,
+    ]);
+  });
+
+  it("api.unlock_slope_v2", () => {
+    expect(extractViewColumns(SQL, "api.unlock_slope_v2")).toEqual([...UNLOCK_SLOPE_V2_COLUMNS]);
   });
 });

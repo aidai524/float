@@ -75,8 +75,8 @@ function sortByTs(candles: Candle[]): Candle[] {
   return [...candles].sort((a, b) => a.ts - b.ts);
 }
 
-/** 找 ts <= target 的最后一根；找不到返回 null */
-function lastAtOrBefore(candles: Candle[], target: number): Candle | null {
+/** 找 ts <= target 的最后一根；找不到返回 null（供 expectations 复用） */
+export function lastAtOrBefore(candles: Candle[], target: number): Candle | null {
   let lo = 0;
   let hi = candles.length - 1;
   let ans: Candle | null = null;
@@ -93,13 +93,13 @@ function lastAtOrBefore(candles: Candle[], target: number): Candle | null {
   return ans;
 }
 
-function firstAtOrAfter(candles: Candle[], target: number): Candle | null {
+export function firstAtOrAfter(candles: Candle[], target: number): Candle | null {
   for (const c of candles) if (c.ts >= target) return c;
   return null;
 }
 
-/** 离 target 最近、且偏差在容差内的 K 线 */
-function nearest(candles: Candle[], target: number, tolMs: number): Candle | null {
+/** 离 target 最近、且偏差在容差内的 K 线（供 expectations 复用） */
+export function nearest(candles: Candle[], target: number, tolMs: number): Candle | null {
   const a = lastAtOrBefore(candles, target);
   const b = firstAtOrAfter(candles, target);
   const cands = [a, b].filter((c): c is Candle => c !== null);

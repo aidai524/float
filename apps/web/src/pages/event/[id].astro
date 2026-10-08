@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import PriceChart from "../../components/PriceChart";
-import { getBaseline, getEventCandles, listEvents } from "../../lib/db";
+import { getBaseline, getEventCandles, getEventExpectation, listEvents } from "../../lib/db";
 import {
   ASSET_COLOR,
   eventFacts,
@@ -23,6 +23,7 @@ export async function getStaticPaths() {
 const { event } = Astro.props;
 const e = event;
 const baseline = await getBaseline(e.id);
+const expectation = await getEventExpectation(e.id);
 
 const { interval, candles } = await getEventCandles(e.token_symbol, e.t0);
 const t = new Date(e.t0).getTime();
@@ -43,6 +44,42 @@ const percentileLabel = (v: unknown): string | null => {
   const n = Number(v);
   return `同类历史 ${Math.round(n * 100)} 分位`;
 };
+
+/** 市场调整后的读数（z = 相对自身事前波动的 sigma 数） */
+const zReading = (z: number | null): string => {
+  if (z == null) return "—";
+  if (z <= -2) return "显著弱于自身常态";
+  if (z <= -1) return "偏弱";
+  if (z >= 2) return "显著强于自身常态";
+  if (z >= 1) return "偏强";
+  return "正常范围内";
+};
+
+const excessRows = expectation
+  ? [
+      {
+        label: "1h",
+        ret: e.ret_1h,
+        bench: expectation.bench_ret_1h,
+        excess: expectation.excess_ret_1h,
+        z: expectation.z_1h,
+      },
+      {
+        label: "4h",
+        ret: e.ret_4h,
+        bench: expectation.bench_ret_4h,
+        excess: expectation.excess_ret_4h,
+        z: expectation.z_4h,
+      },
+      {
+        label: "24h",
+        ret: e.ret_24h,
+        bench: expectation.bench_ret_24h,
+        excess: expectation.excess_ret_24h,
+        z: expectation.z_24h,
+      },
+    ]
+  : [];
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -138,6 +175,54 @@ const jsonLd = {
       </div>
     </div>
   </section>
+
+  {
+    expectation && excessRows.some((r) => r.excess != null) && (
+      <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+        <h2 class="m-0 text-[13px] font-semibold">市场调整（vs BTC）</h2>
+        <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+          先剔除 BTC 同期涨跌（一阶，β=1），再按事件前 30 天日波动标准化：z = 超常收益 /
+          （日波动 × √窗口）。
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px]">
+            <thead>
+              <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+                <th class="px-3 py-2 text-left">窗口</th>
+                <th class="px-3 py-2 text-right">原始收益</th>
+                <th class="px-3 py-2 text-right">BTC 同期</th>
+                <th class="px-3 py-2 text-right">超常收益</th>
+                <th class="px-3 py-2 text-right">z</th>
+                <th class="px-3 py-2 text-left">读数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {excessRows.map((r) => (
+                <tr class="border-b border-[var(--color-line)]">
+                  <td class="px-3 py-2">{r.label}</td>
+                  <td class={`mono px-3 py-2 text-right ${pctClass(r.ret)}`}>{pct(r.ret)}</td>
+                  <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                    {pct(r.bench)}
+                  </td>
+                  <td class={`mono px-3 py-2 text-right font-semibold ${pctClass(r.excess)}`}>
+                    {pct(r.excess)}
+                  </td>
+                  <td
+                    class={`mono px-3 py-2 text-right ${r.z != null && r.z <= -1 ? "text-rose-400" : r.z != null && r.z >= 1 ? "text-emerald-400" : "text-[var(--color-mut)]"}`}
+                  >
+                    {r.z == null ? "—" : `${r.z > 0 ? "+" : ""}${r.z.toFixed(2)}σ`}
+                  </td>
+                  <td class="px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                    {zReading(r.z)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
 
   {
     e.implied_move_1h != null && (

@@ -22,6 +22,7 @@
     "preview": "tsx scripts/preview.ts",
     "backfill": "tsx scripts/backfill-candles.ts",
     "reactions": "tsx scripts/compute-reactions.ts",
+    "expectations": "tsx scripts/compute-expectations.ts",
     "backfill:events": "tsx scripts/backfill-events.ts",
     "classify": "tsx scripts/classify.ts",
     "backfill:dvol": "tsx scripts/backfill-dvol.ts",

@@ -1,19 +1,19 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import {
-  getUnlockSlope,
-  listUnlockCategoryStats,
-  listUnlockDilutionStats,
+  getUnlockSlopeV2,
+  listUnlockCategoryStatsV2,
+  listUnlockFloatStats,
 } from "../lib/db";
 
-const [slope, dilution, categories] = await Promise.all([
-  getUnlockSlope(),
-  listUnlockDilutionStats(),
-  listUnlockCategoryStats(5),
+const [slope, floatStats, categories] = await Promise.all([
+  getUnlockSlopeV2(),
+  listUnlockFloatStats(),
+  listUnlockCategoryStatsV2(5),
 ]);
 
-const BUCKET_ORDER = ["0.1-0.3%", "0.3-1%", "1-3%", "3-10%", ">=10%"];
-const dilutionSorted = [...dilution].sort(
+const BUCKET_ORDER = ["0.5-1%", "1-2%", "2-5%", "5-10%", ">=10%"];
+const floatSorted = [...floatStats].sort(
   (a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket),
 );
 
@@ -30,6 +30,16 @@ const cls = (v: number | null) =>
         ? "text-rose-400"
         : "text-[var(--color-mut)]";
 const num = (v: number | null, digits = 2) => (v == null ? "—" : v.toFixed(digits));
+const zFmt = (v: number | null) =>
+  v == null ? "—" : `${v > 0 ? "+" : ""}${v.toFixed(2)}σ`;
+const zCls = (v: number | null) =>
+  v == null
+    ? "text-[var(--color-mut)]"
+    : v <= -1
+      ? "text-rose-400"
+      : v >= 1
+        ? "text-emerald-400"
+        : "text-[var(--color-mut)]";
 
 const CATEGORY_LABEL: Record<string, string> = {
   insiders: "内部人（团队/基金会）",
@@ -48,123 +58,158 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 ---
 
-<Layout title="解锁反应" subtitle="稀释规模与接收方如何影响价格">
+<Layout title="解锁反应" subtitle="float 稀释与接收方如何影响价格（已剔除 BTC）">
   <h1 class="m-0 mb-1 text-[18px] font-semibold">解锁反应研究</h1>
   <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
-    同一件事——代币解锁——反应并不一样。这一页把 <strong>稀释规模</strong>（占供应比例）和
-    <strong>接收方</strong>（团队 / 私募 / 社区 / 生态…）拆开，看历史上不一样在哪。
+    同一件事——代币解锁——反应并不一样。这一页把 <strong>float 稀释</strong>（占当前流通量）和
+    <strong>接收方</strong>（团队 / 私募 / 社区 / 生态…）拆开，并剔除 BTC 同期涨跌，
+    看历史上不一样在哪。
   </p>
 
   {
     slope && slope.n > 0 && (
       <section class="mb-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
         <div class="text-[12px] text-[var(--color-mut)]">
-          每 1% 供应稀释对应的 4h 收益（归一化斜率）
+          每 1% float 稀释对应的 4h 收益（已剔除 BTC）
         </div>
-        <div class={`mt-1 text-[28px] font-semibold tabular-nums ${cls(slope.slope_4h_per_pct)}`}>
-          {pctSigned(slope.slope_4h_per_pct)}
+        <div
+          class={`mt-1 text-[28px] font-semibold tabular-nums ${cls(slope.slope_excess_4h_per_pct)}`}
+        >
+          {pctSigned(slope.slope_excess_4h_per_pct)}
         </div>
         <div class="mt-1 text-[12px] text-[var(--color-mut)]">
-          N = {slope.n} · R² = {num(slope.r2)} · 样本中位稀释 {pctPlain(slope.median_pct)} ·
-          样本中位 4h 反应 {pctSigned(slope.median_ret_4h)}
+          N = {slope.n}（有调整值 {slope.n_excess}） · R² = {num(slope.r2)} · 样本中位稀释{" "}
+          {slope.median_float_pct == null ? "—" : `${slope.median_float_pct.toFixed(2)}%`} ·
+          中位调整后 4h {pctSigned(slope.median_excess_4h)}
+        </div>
+        <div class="mt-1 text-[11px] text-[var(--color-mut)]">
+          对照：不剔除 BTC 的原始斜率 {pctSigned(slope.slope_ret_4h_per_pct)}（R² ={" "}
+          {num(slope.r2_ret)}）
         </div>
       </section>
     )
   }
 
   <section class="mb-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-    <div class="mb-2 font-semibold">按稀释规模</div>
-    <table class="w-full text-[12px] tabular-nums">
-      <thead class="text-[var(--color-mut)]">
-        <tr class="text-left">
-          <th class="py-1 font-normal">稀释</th>
-          <th class="py-1 text-right font-normal">N</th>
-          <th class="py-1 text-right font-normal">1h 中位</th>
-          <th class="py-1 text-right font-normal">4h 中位</th>
-          <th class="py-1 text-right font-normal">24h 中位</th>
-          <th class="py-1 text-right font-normal">最大回撤中位</th>
-          <th class="py-1 text-right font-normal">4h 上涨占比</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          dilutionSorted.map((d) => (
-            <tr class="border-t border-[var(--color-line)]">
-              <td class="py-1">{d.bucket}</td>
-              <td class="py-1 text-right">{d.n}</td>
-              <td class={`py-1 text-right ${cls(d.median_ret_1h)}`}>{pctSigned(d.median_ret_1h)}</td>
-              <td class={`py-1 text-right ${cls(d.median_ret_4h)}`}>{pctSigned(d.median_ret_4h)}</td>
-              <td class={`py-1 text-right ${cls(d.median_ret_24h)}`}>
-                {pctSigned(d.median_ret_24h)}
-              </td>
-              <td class={`py-1 text-right ${cls(d.median_max_dd)}`}>{pctSigned(d.median_max_dd)}</td>
-              <td class="py-1 text-right">{pctPlain(d.pos_4h, 0)}</td>
-            </tr>
-          ))
-        }
-        {
-          dilutionSorted.length === 0 && (
-            <tr>
-              <td colspan="7" class="py-2 text-[var(--color-mut)]">
-                样本积累中
-              </td>
-            </tr>
-          )
-        }
-      </tbody>
-    </table>
+    <div class="mb-2 font-semibold">按 float 稀释（占流通量）</div>
+    <p class="mb-2 mt-0 text-[11px] text-[var(--color-mut)]">
+      「调整后」= 代币收益 − BTC 同期收益；σ = 相对事件前 30 天日波动的标准化偏离。
+    </p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-[12px] tabular-nums">
+        <thead class="text-[var(--color-mut)]">
+          <tr class="text-left">
+            <th class="py-1 font-normal">稀释</th>
+            <th class="py-1 text-right font-normal">N（有调整）</th>
+            <th class="py-1 text-right font-normal">平均 float</th>
+            <th class="py-1 text-right font-normal">4h 原始</th>
+            <th class="py-1 text-right font-normal">4h 调整后</th>
+            <th class="py-1 text-right font-normal">4h 25–75</th>
+            <th class="py-1 text-right font-normal">z 中位</th>
+            <th class="py-1 text-right font-normal">4h 上涨占比</th>
+            <th class="py-1 text-right font-normal">24h 调整后</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            floatSorted.map((d) => (
+              <tr class="border-t border-[var(--color-line)]">
+                <td class="py-1">{d.bucket}</td>
+                <td class="py-1 text-right">
+                  {d.n_excess} / {d.n}
+                </td>
+                <td class="py-1 text-right">{pctPlain(d.avg_float_pct)}</td>
+                <td class={`py-1 text-right ${cls(d.median_ret_4h)}`}>
+                  {pctSigned(d.median_ret_4h)}
+                </td>
+                <td class={`py-1 text-right font-semibold ${cls(d.median_excess_4h)}`}>
+                  {pctSigned(d.median_excess_4h)}
+                </td>
+                <td class="py-1 text-right text-[var(--color-mut)]">
+                  {pctSigned(d.p25_excess_4h, 1)} ~ {pctSigned(d.p75_excess_4h, 1)}
+                </td>
+                <td class={`py-1 text-right ${zCls(d.median_z_4h)}`}>{zFmt(d.median_z_4h)}</td>
+                <td class="py-1 text-right">{pctPlain(d.pos_excess_4h, 0)}</td>
+                <td class={`py-1 text-right ${cls(d.median_excess_24h)}`}>
+                  {pctSigned(d.median_excess_24h)}
+                </td>
+              </tr>
+            ))
+          }
+          {
+            floatSorted.length === 0 && (
+              <tr>
+                <td colspan="9" class="py-2 text-[var(--color-mut)]">
+                  样本积累中
+                </td>
+              </tr>
+            )
+          }
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="mb-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
     <div class="mb-2 font-semibold">按接收方</div>
-    <table class="w-full text-[12px] tabular-nums">
-      <thead class="text-[var(--color-mut)]">
-        <tr class="text-left">
-          <th class="py-1 font-normal">接收方</th>
-          <th class="py-1 text-right font-normal">N</th>
-          <th class="py-1 text-right font-normal">平均稀释</th>
-          <th class="py-1 text-right font-normal">1h 中位</th>
-          <th class="py-1 text-right font-normal">4h 中位</th>
-          <th class="py-1 text-right font-normal">4h 25–75 分位</th>
-          <th class="py-1 text-right font-normal">最大回撤中位</th>
-        </tr>
-      </thead>
-      <tbody>
-        {
-          categories.map((c) => (
-            <tr class="border-t border-[var(--color-line)]">
-              <td class="py-1">{CATEGORY_LABEL[c.category] ?? c.category}</td>
-              <td class="py-1 text-right">{c.n}</td>
-              <td class="py-1 text-right">{pctPlain(c.avg_pct)}</td>
-              <td class={`py-1 text-right ${cls(c.median_ret_1h)}`}>{pctSigned(c.median_ret_1h)}</td>
-              <td class={`py-1 text-right ${cls(c.median_ret_4h)}`}>{pctSigned(c.median_ret_4h)}</td>
-              <td class="py-1 text-right">
-                {pctSigned(c.p25_ret_4h, 1)} ~ {pctSigned(c.p75_ret_4h, 1)}
-              </td>
-              <td class={`py-1 text-right ${cls(c.median_max_dd)}`}>{pctSigned(c.median_max_dd)}</td>
-            </tr>
-          ))
-        }
-        {
-          categories.length === 0 && (
-            <tr>
-              <td colspan="7" class="py-2 text-[var(--color-mut)]">
-                样本积累中
-              </td>
-            </tr>
-          )
-        }
-      </tbody>
-    </table>
+    <div class="overflow-x-auto">
+      <table class="w-full text-[12px] tabular-nums">
+        <thead class="text-[var(--color-mut)]">
+          <tr class="text-left">
+            <th class="py-1 font-normal">接收方</th>
+            <th class="py-1 text-right font-normal">N（有调整）</th>
+            <th class="py-1 text-right font-normal">平均 float</th>
+            <th class="py-1 text-right font-normal">4h 调整后</th>
+            <th class="py-1 text-right font-normal">4h 25–75</th>
+            <th class="py-1 text-right font-normal">z 中位</th>
+            <th class="py-1 text-right font-normal">24h 调整后</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            categories.map((c) => (
+              <tr class="border-t border-[var(--color-line)]">
+                <td class="py-1">{CATEGORY_LABEL[c.category] ?? c.category}</td>
+                <td class="py-1 text-right">
+                  {c.n_excess} / {c.n}
+                </td>
+                <td class="py-1 text-right">{pctPlain(c.avg_float_pct)}</td>
+                <td class={`py-1 text-right font-semibold ${cls(c.median_excess_4h)}`}>
+                  {pctSigned(c.median_excess_4h)}
+                </td>
+                <td class="py-1 text-right text-[var(--color-mut)]">
+                  {pctSigned(c.p25_excess_4h, 1)} ~ {pctSigned(c.p75_excess_4h, 1)}
+                </td>
+                <td class={`py-1 text-right ${zCls(c.median_z_4h)}`}>{zFmt(c.median_z_4h)}</td>
+                <td class={`py-1 text-right ${cls(c.median_excess_24h)}`}>
+                  {pctSigned(c.median_excess_24h)}
+                </td>
+              </tr>
+            ))
+          }
+          {
+            categories.length === 0 && (
+              <tr>
+                <td colspan="7" class="py-2 text-[var(--color-mut)]">
+                  样本积累中
+                </td>
+              </tr>
+            )
+          }
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section
     class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4 text-[12px] text-[var(--color-mut)]"
   >
-    <div class="mb-1 font-semibold text-[var(--color-fg)]">口径</div>
+    <div class="mb-1 font-semibold text-[var(--color-fg)]">口径（v2）</div>
     <p class="m-0">
-      仅 cliff 解锁 · 稀释占供应 ≥ 0.5% · 有 Binance 交易对且流动性达标 · 反应口径 v1 ·
-      数据源 DefiLlama（历史）+ Binance（价格）。历史分布不代表未来，仅供研究，非投资建议。
+      仅 cliff 解锁 · float 稀释 ≥ 0.5%（占当前流通量；缺失时回退占最大供应）· 有 Binance
+      交易对且流动性达标 · <strong>市场调整</strong> = 代币收益 − BTC 同期收益（一阶，β=1）·
+      <strong>z</strong> = 调整后收益 /（事件前 30 天日波动 × √窗口）· 反应口径 v1 · 数据源
+      DefiLlama（解锁历史）+ Binance（价格与 BTC 基准）。历史分布不代表未来，仅供研究，非投资建议。
     </p>
   </section>
 </Layout>

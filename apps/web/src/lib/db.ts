@@ -6,12 +6,16 @@ import { createClient } from "@supabase/supabase-js";
 import type {
   Candle,
   CategoryStatsV1,
+  EventExpectationV1,
   EventTypeStatsV1,
   EventV1,
   TokenV1,
   UnlockCategoryStat,
+  UnlockCategoryStatV2,
   UnlockDilutionStat,
+  UnlockFloatStat,
   UnlockSlope,
+  UnlockSlopeV2,
 } from "./types";
 
 const url = process.env.SUPABASE_URL;
@@ -163,4 +167,42 @@ export async function getUnlockSlope(): Promise<UnlockSlope | null> {
   const { data, error } = await api.from("unlock_slope_v1").select("*").maybeSingle();
   if (error) throw error;
   return (data as UnlockSlope) ?? null;
+}
+
+// ---------- v2：float 稀释 + 市场调整（剔除 BTC） ----------
+
+/** api.unlock_float_stats_v2 —— 按 float 稀释（占流通）分桶 */
+export async function listUnlockFloatStats(): Promise<UnlockFloatStat[]> {
+  const { data, error } = await api.from("unlock_float_stats_v2").select("*");
+  if (error) throw error;
+  return (data ?? []) as UnlockFloatStat[];
+}
+
+/** api.unlock_category_stats_v2 —— 按接收方类别（样本 >= minN） */
+export async function listUnlockCategoryStatsV2(minN = 5): Promise<UnlockCategoryStatV2[]> {
+  const { data, error } = await api
+    .from("unlock_category_stats_v2")
+    .select("*")
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as UnlockCategoryStatV2[];
+}
+
+/** api.unlock_slope_v2 —— 每 1% float 稀释对应的市场调整后 4h 收益 */
+export async function getUnlockSlopeV2(): Promise<UnlockSlopeV2 | null> {
+  const { data, error } = await api.from("unlock_slope_v2").select("*").maybeSingle();
+  if (error) throw error;
+  return (data as UnlockSlopeV2) ?? null;
+}
+
+/** api.event_expectation_v1 —— 单事件的市场调整反应与 z 值 */
+export async function getEventExpectation(eventId: number): Promise<EventExpectationV1 | null> {
+  const { data, error } = await api
+    .from("event_expectation_v1")
+    .select("*")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as EventExpectationV1) ?? null;
 }
