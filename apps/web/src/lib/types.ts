@@ -185,6 +185,15 @@ export interface EventExpectationV1 {
   ret_168h: number | null;
   excess_ret_168h: number | null;
   z_168h: number | null;
+  placebo_ts: string | null;
+  placebo_pre_excess_24h: number | null;
+  placebo_pre_excess_72h: number | null;
+  placebo_excess_72h: number | null;
+  placebo_excess_168h: number | null;
+  abn_pre_24h: number | null;
+  abn_pre_72h: number | null;
+  abn_72h: number | null;
+  abn_168h: number | null;
 }
 
 /** api.unlock_float_stats_v2 —— 解锁按 float 稀释分桶（市场调整后） */
@@ -206,6 +215,11 @@ export interface UnlockFloatStat {
   median_pre_excess_72h: number | null;
   median_excess_72h: number | null;
   median_excess_168h: number | null;
+  median_placebo_excess_168h: number | null;
+  median_abn_pre_24h: number | null;
+  median_abn_pre_72h: number | null;
+  median_abn_72h: number | null;
+  median_abn_168h: number | null;
 }
 
 /** api.unlock_category_stats_v2 —— 解锁按接收方（市场调整后） */
@@ -227,6 +241,11 @@ export interface UnlockCategoryStatV2 {
   median_pre_excess_72h: number | null;
   median_excess_72h: number | null;
   median_excess_168h: number | null;
+  median_placebo_excess_168h: number | null;
+  median_abn_pre_24h: number | null;
+  median_abn_pre_72h: number | null;
+  median_abn_72h: number | null;
+  median_abn_168h: number | null;
 }
 
 /** api.unlock_slope_v2 —— 每 1% float 稀释对应的市场调整后 4h 收益 */
@@ -243,4 +262,8 @@ export interface UnlockSlopeV2 {
   r2_pre_excess_72h: number | null;
   slope_excess_168h_per_pct: number | null;
   r2_excess_168h: number | null;
+  slope_abn_pre_72h_per_pct: number | null;
+  r2_abn_pre_72h: number | null;
+  slope_abn_168h_per_pct: number | null;
+  r2_abn_168h: number | null;
 }

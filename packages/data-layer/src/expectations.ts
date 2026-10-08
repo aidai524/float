@@ -82,6 +82,29 @@ export interface LongWindowSet {
   z168h: number | null;
 }
 
+/** placebo 窗口偏移：事件前 21 天（同一代币的非事件窗口） */
+export const PLACEBO_OFFSET_MS = 21 * DAY_MS;
+
+/** 净效应（difference-in-differences）：事件窗口超常收益 − placebo 窗口超常收益 */
+export interface AbnormalSet {
+  abnPre24h: number | null;
+  abnPre72h: number | null;
+  abn72h: number | null;
+  abn168h: number | null;
+}
+
+/** 逐事件相减（配对）；任一侧缺失则净值为 null，不回退 */
+export function computeAbnormal(treated: LongWindowSet, placebo: LongWindowSet): AbnormalSet {
+  const diff = (a: number | null, b: number | null): number | null =>
+    a != null && b != null ? a - b : null;
+  return {
+    abnPre24h: diff(treated.preExcess24h, placebo.preExcess24h),
+    abnPre72h: diff(treated.preExcess72h, placebo.preExcess72h),
+    abn72h: diff(treated.excessRet72h, placebo.excessRet72h),
+    abn168h: diff(treated.excessRet168h, placebo.excessRet168h),
+  };
+}
+
 export interface ComputeExcessOptions {
   /** 覆盖 [anchor-1h, anchor+25h] 的基准 1m K 线（如 BTCUSDT） */
   bench1m: Candle[];

@@ -15,9 +15,11 @@
 import { createClient } from "@supabase/supabase-js";
 import {
   baselineDailyVol,
+  computeAbnormal,
   computeExcess,
   computeLongWindows,
   EXPECTATION_VERSION,
+  PLACEBO_OFFSET_MS,
 } from "../packages/data-layer/src/expectations";
 import { DAY_MS, MINUTE, type Candle } from "../packages/data-layer/src/reactions";
 
@@ -118,6 +120,9 @@ async function fetchKlines(
   return out;
 }
 
+/** placebo 候选偏移：优先 21 天（与事件窗口无重叠）；历史不足时回退 14 天 */
+const PLACEBO_OFFSETS_MS = [PLACEBO_OFFSET_MS, 14 * DAY_MS];
+
 /** 简单 LRU：按 key 缓存 BTC 1m 窗口 / 事前 1h 窗口，避免重复请求 */
 class LruCache<V> {
   private map = new Map<string, V>();
@@ -201,8 +206,13 @@ async function main() {
     let hourly = volCache.get(key);
     if (hourly === undefined) {
       try {
-        // 覆盖事前 31 天 + 事后 8 天（长窗口 7d 需要事后数据）
-        hourly = await fetchKlines(`${symbol}USDT`, "1h", t0 - 31 * DAY_MS, t0 + 8 * DAY_MS);
+        // 覆盖：事前 31 天 + 事后 8 天 + placebo（T0−21d）的事前 31 天
+        hourly = await fetchKlines(
+          `${symbol}USDT`,
+          "1h",
+          t0 - (31 * DAY_MS + PLACEBO_OFFSET_MS),
+          t0 + 8 * DAY_MS,
+        );
       } catch {
         hourly = null;
       }
@@ -219,7 +229,7 @@ async function main() {
     (await fetchKlines(
       BENCHMARK,
       "1h",
-      Math.min(...scopeTimes) - 4 * DAY_MS,
+      Math.min(...scopeTimes) - (4 * DAY_MS + PLACEBO_OFFSET_MS),
       Math.max(...scopeTimes) + 8 * DAY_MS,
     )) ?? [];
   console.log(`  BTC 1h ${btc1h.length} 根`);
@@ -279,13 +289,36 @@ async function main() {
       tokenRet24h: r.ret_24h,
       baselineVolDaily: vol,
     });
+    const t0Ms = new Date(e.t0).getTime();
     const long = computeLongWindows({
       token1h: hourly ?? [],
       bench1h: btc1h,
-      t0: new Date(e.t0).getTime(),
+      t0: t0Ms,
       anchor,
       baselineVolDaily: vol,
     });
+    // placebo：优先 21 天；7 天窗口无数据（新币历史上限）则回退 14 天
+    let placeboOffset = PLACEBO_OFFSETS_MS[0]!;
+    let placebo = computeLongWindows({
+      token1h: hourly ?? [],
+      bench1h: btc1h,
+      t0: t0Ms - placeboOffset,
+      anchor: t0Ms - placeboOffset,
+      baselineVolDaily: vol,
+    });
+    for (const off of PLACEBO_OFFSETS_MS.slice(1)) {
+      if (placebo.excessRet168h != null) break;
+      placeboOffset = off;
+      placebo = computeLongWindows({
+        token1h: hourly ?? [],
+        bench1h: btc1h,
+        t0: t0Ms - placeboOffset,
+        anchor: t0Ms - placeboOffset,
+        baselineVolDaily: vol,
+      });
+    }
+    const placeboT0 = t0Ms - placeboOffset;
+    const abn = computeAbnormal(long, placebo);
 
     rows.push({
       event_id: e.id,
@@ -312,6 +345,15 @@ async function main() {
       ret_168h: long.ret168h,
       excess_ret_168h: long.excessRet168h,
       z_168h: long.z168h,
+      placebo_ts: new Date(placeboT0).toISOString(),
+      placebo_pre_excess_24h: placebo.preExcess24h,
+      placebo_pre_excess_72h: placebo.preExcess72h,
+      placebo_excess_72h: placebo.excessRet72h,
+      placebo_excess_168h: placebo.excessRet168h,
+      abn_pre_24h: abn.abnPre24h,
+      abn_pre_72h: abn.abnPre72h,
+      abn_72h: abn.abn72h,
+      abn_168h: abn.abn168h,
       computed_at: new Date().toISOString(),
     });
     computed++;
@@ -326,7 +368,7 @@ async function main() {
     if (computed % 50 === 0) {
       const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
       console.log(
-        `  [${computed}/${scope.length}] #${e.id} ${e.token_symbol} pre3d ${pct(long.preExcess72h)} · 4h ${pct(x.excessRet4h)} · 7d ${pct(long.excessRet168h)}`,
+        `  [${computed}/${scope.length}] #${e.id} ${e.token_symbol} pre3d净 ${pct(abn.abnPre72h)} · 4h ${pct(x.excessRet4h)} · 7d净 ${pct(abn.abn168h)}`,
       );
     }
   }

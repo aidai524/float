@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   baselineDailyVol,
+  computeAbnormal,
   computeExcess,
   computeLongWindows,
   BASELINE_WINDOW_DAYS,
@@ -196,5 +197,39 @@ describe("computeLongWindows", () => {
     expect(r.excessRet72h).toBeNull();
     expect(r.z72h).toBeNull();
     expect(r.preRet24h).not.toBeNull();
+  });
+});
+
+describe("computeAbnormal（placebo 净效应）", () => {
+  const treated = {
+    preRet24h: 0.01,
+    preExcess24h: -0.012,
+    preRet72h: 0.02,
+    preExcess72h: -0.018,
+    ret72h: 0.01,
+    excessRet72h: -0.04,
+    z72h: -0.5,
+    ret168h: 0.02,
+    excessRet168h: -0.05,
+    z168h: -0.6,
+  };
+  const placebo = {
+    ...treated,
+    preExcess24h: -0.004,
+    preExcess72h: -0.006,
+    excessRet72h: -0.01,
+    excessRet168h: -0.02,
+  };
+
+  it("逐事件相减（配对）", () => {
+    const a = computeAbnormal(treated, placebo);
+    expect(a.abnPre72h).toBeCloseTo(-0.012, 12);
+    expect(a.abn168h).toBeCloseTo(-0.03, 12);
+  });
+
+  it("任一侧缺失 → 净值为 null，不回退成单边值", () => {
+    const a = computeAbnormal(treated, { ...placebo, excessRet168h: null });
+    expect(a.abn168h).toBeNull();
+    expect(a.abnPre72h).not.toBeNull();
   });
 });

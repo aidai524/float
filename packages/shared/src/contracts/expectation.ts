@@ -36,6 +36,15 @@ export const EventExpectationV1Schema = z.object({
   ret_168h: num.nullable(),
   excess_ret_168h: num.nullable(),
   z_168h: num.nullable(),
+  placebo_ts: z.string().nullable(),
+  placebo_pre_excess_24h: num.nullable(),
+  placebo_pre_excess_72h: num.nullable(),
+  placebo_excess_72h: num.nullable(),
+  placebo_excess_168h: num.nullable(),
+  abn_pre_24h: num.nullable(),
+  abn_pre_72h: num.nullable(),
+  abn_72h: num.nullable(),
+  abn_168h: num.nullable(),
 });
 export type EventExpectationV1 = z.infer<typeof EventExpectationV1Schema>;
 
@@ -91,6 +100,11 @@ export const UnlockFloatStatsV2Schema = z.object({
   median_pre_excess_72h: num.nullable(),
   median_excess_72h: num.nullable(),
   median_excess_168h: num.nullable(),
+  median_placebo_excess_168h: num.nullable(),
+  median_abn_pre_24h: num.nullable(),
+  median_abn_pre_72h: num.nullable(),
+  median_abn_72h: num.nullable(),
+  median_abn_168h: num.nullable(),
 });
 export type UnlockFloatStatsV2 = z.infer<typeof UnlockFloatStatsV2Schema>;
 
@@ -117,6 +131,11 @@ export const UnlockCategoryStatsV2Schema = z.object({
   median_pre_excess_72h: num.nullable(),
   median_excess_72h: num.nullable(),
   median_excess_168h: num.nullable(),
+  median_placebo_excess_168h: num.nullable(),
+  median_abn_pre_24h: num.nullable(),
+  median_abn_pre_72h: num.nullable(),
+  median_abn_72h: num.nullable(),
+  median_abn_168h: num.nullable(),
 });
 export type UnlockCategoryStatsV2 = z.infer<typeof UnlockCategoryStatsV2Schema>;
 
@@ -138,6 +157,10 @@ export const UnlockSlopeV2Schema = z.object({
   r2_pre_excess_72h: num.nullable(),
   slope_excess_168h_per_pct: num.nullable(),
   r2_excess_168h: num.nullable(),
+  slope_abn_pre_72h_per_pct: num.nullable(),
+  r2_abn_pre_72h: num.nullable(),
+  slope_abn_168h_per_pct: num.nullable(),
+  r2_abn_168h: num.nullable(),
 });
 export type UnlockSlopeV2 = z.infer<typeof UnlockSlopeV2Schema>;
 

@@ -84,9 +84,9 @@ const CATEGORY_LABEL: Record<string, string> = {
         </div>
         <div class="mt-1 text-[11px] text-[var(--color-mut)]">
           对照：不剔除 BTC 的原始斜率 {pctSigned(slope.slope_ret_4h_per_pct)}（R² ={" "}
-          {num(slope.r2_ret)}） · 事前 3 天斜率 {pctSigned(slope.slope_pre_excess_72h_per_pct)}
-          （R² = {num(slope.r2_pre_excess_72h)}） · 解锁后 7 天斜率{" "}
-          {pctSigned(slope.slope_excess_168h_per_pct)}（R² = {num(slope.r2_excess_168h)}）
+          {num(slope.r2_ret)}） · 事前 3 天净斜率 {pctSigned(slope.slope_abn_pre_72h_per_pct)}
+          （R² = {num(slope.r2_abn_pre_72h)}） · 解锁后 7 天净斜率{" "}
+          {pctSigned(slope.slope_abn_168h_per_pct)}（R² = {num(slope.r2_abn_168h)}）
         </div>
       </section>
     )
@@ -104,11 +104,11 @@ const CATEGORY_LABEL: Record<string, string> = {
             <th class="py-1 font-normal">稀释</th>
             <th class="py-1 text-right font-normal">N（有调整）</th>
             <th class="py-1 text-right font-normal">平均 float</th>
-            <th class="py-1 text-right font-normal">前 3 天</th>
+            <th class="py-1 text-right font-normal">前 3 天净</th>
             <th class="py-1 text-right font-normal">4h 调整后</th>
             <th class="py-1 text-right font-normal">4h 25–75</th>
             <th class="py-1 text-right font-normal">24h 调整后</th>
-            <th class="py-1 text-right font-normal">7 天调整后</th>
+            <th class="py-1 text-right font-normal">7 天净</th>
             <th class="py-1 text-right font-normal">z 中位</th>
             <th class="py-1 text-right font-normal">4h 上涨占比</th>
           </tr>
@@ -122,8 +122,12 @@ const CATEGORY_LABEL: Record<string, string> = {
                   {d.n_excess} / {d.n}
                 </td>
                 <td class="py-1 text-right">{pctPlain(d.avg_float_pct)}</td>
-                <td class={`py-1 text-right ${cls(d.median_pre_excess_72h)}`}>
-                  {pctSigned(d.median_pre_excess_72h)}
+                <td class={`py-1 text-right ${cls(d.median_abn_pre_72h)}`}>
+                  {pctSigned(d.median_abn_pre_72h)}
+                  <span class="text-[10px] text-[var(--color-mut)]">
+                    {" / "}
+                    {pctSigned(d.median_pre_excess_72h)}
+                  </span>
                 </td>
                 <td class={`py-1 text-right font-semibold ${cls(d.median_excess_4h)}`}>
                   {pctSigned(d.median_excess_4h)}
@@ -134,8 +138,12 @@ const CATEGORY_LABEL: Record<string, string> = {
                 <td class={`py-1 text-right ${cls(d.median_excess_24h)}`}>
                   {pctSigned(d.median_excess_24h)}
                 </td>
-                <td class={`py-1 text-right ${cls(d.median_excess_168h)}`}>
-                  {pctSigned(d.median_excess_168h)}
+                <td class={`py-1 text-right ${cls(d.median_abn_168h)}`}>
+                  {pctSigned(d.median_abn_168h)}
+                  <span class="text-[10px] text-[var(--color-mut)]">
+                    {" / "}
+                    {pctSigned(d.median_excess_168h)}
+                  </span>
                 </td>
                 <td class={`py-1 text-right ${zCls(d.median_z_4h)}`}>{zFmt(d.median_z_4h)}</td>
                 <td class="py-1 text-right">{pctPlain(d.pos_excess_4h, 0)}</td>
@@ -165,11 +173,11 @@ const CATEGORY_LABEL: Record<string, string> = {
             <th class="py-1 font-normal">接收方</th>
             <th class="py-1 text-right font-normal">N（有调整）</th>
             <th class="py-1 text-right font-normal">平均 float</th>
-            <th class="py-1 text-right font-normal">前 3 天</th>
+            <th class="py-1 text-right font-normal">前 3 天净</th>
             <th class="py-1 text-right font-normal">4h 调整后</th>
             <th class="py-1 text-right font-normal">4h 25–75</th>
             <th class="py-1 text-right font-normal">24h 调整后</th>
-            <th class="py-1 text-right font-normal">7 天调整后</th>
+            <th class="py-1 text-right font-normal">7 天净</th>
             <th class="py-1 text-right font-normal">z 中位</th>
           </tr>
         </thead>
@@ -182,8 +190,12 @@ const CATEGORY_LABEL: Record<string, string> = {
                   {c.n_excess} / {c.n}
                 </td>
                 <td class="py-1 text-right">{pctPlain(c.avg_float_pct)}</td>
-                <td class={`py-1 text-right ${cls(c.median_pre_excess_72h)}`}>
-                  {pctSigned(c.median_pre_excess_72h)}
+                <td class={`py-1 text-right ${cls(c.median_abn_pre_72h)}`}>
+                  {pctSigned(c.median_abn_pre_72h)}
+                  <span class="text-[10px] text-[var(--color-mut)]">
+                    {" / "}
+                    {pctSigned(c.median_pre_excess_72h)}
+                  </span>
                 </td>
                 <td class={`py-1 text-right font-semibold ${cls(c.median_excess_4h)}`}>
                   {pctSigned(c.median_excess_4h)}
@@ -194,8 +206,12 @@ const CATEGORY_LABEL: Record<string, string> = {
                 <td class={`py-1 text-right ${cls(c.median_excess_24h)}`}>
                   {pctSigned(c.median_excess_24h)}
                 </td>
-                <td class={`py-1 text-right ${cls(c.median_excess_168h)}`}>
-                  {pctSigned(c.median_excess_168h)}
+                <td class={`py-1 text-right ${cls(c.median_abn_168h)}`}>
+                  {pctSigned(c.median_abn_168h)}
+                  <span class="text-[10px] text-[var(--color-mut)]">
+                    {" / "}
+                    {pctSigned(c.median_excess_168h)}
+                  </span>
                 </td>
                 <td class={`py-1 text-right ${zCls(c.median_z_4h)}`}>{zFmt(c.median_z_4h)}</td>
               </tr>
@@ -222,8 +238,9 @@ const CATEGORY_LABEL: Record<string, string> = {
     <p class="m-0">
       仅 cliff 解锁 · float 稀释 ≥ 0.5%（占当前流通量；缺失时回退占最大供应）· 有 Binance
       交易对且流动性达标 · <strong>市场调整</strong> = 代币收益 − BTC 同期收益（一阶，β=1）·
-      <strong>z</strong> = 调整后收益 /（事件前 30 天日波动 × √窗口）· 反应口径 v1 · 数据源
-      DefiLlama（解锁历史）+ Binance（价格与 BTC 基准）。历史分布不代表未来，仅供研究，非投资建议。
+      <strong>净</strong> = 事件窗口超常收益 − 安慰剂窗口（T0−21d，同一代币）超常收益 ·
+      <strong>z</strong> = 调整后收益 /（事件前 30 天日波动 × √窗口）· 格子内「净 / 调整后」· 反应口径
+      v1 · 数据源 DefiLlama（解锁历史）+ Binance（价格与 BTC 基准）。历史分布不代表未来，仅供研究，非投资建议。
     </p>
   </section>
 </Layout>

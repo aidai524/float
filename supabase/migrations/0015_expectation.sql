@@ -61,6 +61,16 @@ create table if not exists event_expectation (
   ret_168h            numeric,
   excess_ret_168h     numeric,
   z_168h              numeric,
+  -- placebo 对照（T0−21d 的非事件窗口）与净效应
+  placebo_ts          timestamptz,
+  placebo_pre_excess_24h  numeric,
+  placebo_pre_excess_72h  numeric,
+  placebo_excess_72h      numeric,
+  placebo_excess_168h     numeric,
+  abn_pre_24h         numeric,
+  abn_pre_72h         numeric,
+  abn_72h             numeric,
+  abn_168h            numeric,
   computed_at         timestamptz not null default now(),
   primary key (event_id, methodology_version)
 );
@@ -76,6 +86,15 @@ alter table event_expectation add column if not exists z_72h numeric;
 alter table event_expectation add column if not exists ret_168h numeric;
 alter table event_expectation add column if not exists excess_ret_168h numeric;
 alter table event_expectation add column if not exists z_168h numeric;
+alter table event_expectation add column if not exists placebo_ts timestamptz;
+alter table event_expectation add column if not exists placebo_pre_excess_24h numeric;
+alter table event_expectation add column if not exists placebo_pre_excess_72h numeric;
+alter table event_expectation add column if not exists placebo_excess_72h numeric;
+alter table event_expectation add column if not exists placebo_excess_168h numeric;
+alter table event_expectation add column if not exists abn_pre_24h numeric;
+alter table event_expectation add column if not exists abn_pre_72h numeric;
+alter table event_expectation add column if not exists abn_72h numeric;
+alter table event_expectation add column if not exists abn_168h numeric;
 
 create index if not exists idx_expectation_version
   on event_expectation (methodology_version, benchmark);
@@ -106,7 +125,16 @@ select
   x.z_72h,
   x.ret_168h,
   x.excess_ret_168h,
-  x.z_168h
+  x.z_168h,
+  x.placebo_ts,
+  x.placebo_pre_excess_24h,
+  x.placebo_pre_excess_72h,
+  x.placebo_excess_72h,
+  x.placebo_excess_168h,
+  x.abn_pre_24h,
+  x.abn_pre_72h,
+  x.abn_72h,
+  x.abn_168h
 from event_expectation x
 where x.methodology_version = 'v2';
 
@@ -197,7 +225,12 @@ select
   round(percentile_cont(0.5) within group (order by x.pre_excess_24h)::numeric, 5) as median_pre_excess_24h,
   round(percentile_cont(0.5) within group (order by x.pre_excess_72h)::numeric, 5) as median_pre_excess_72h,
   round(percentile_cont(0.5) within group (order by x.excess_ret_72h)::numeric, 5) as median_excess_72h,
-  round(percentile_cont(0.5) within group (order by x.excess_ret_168h)::numeric, 5) as median_excess_168h
+  round(percentile_cont(0.5) within group (order by x.excess_ret_168h)::numeric, 5) as median_excess_168h,
+  round(percentile_cont(0.5) within group (order by x.placebo_excess_168h)::numeric, 5) as median_placebo_excess_168h,
+  round(percentile_cont(0.5) within group (order by x.abn_pre_24h)::numeric, 5) as median_abn_pre_24h,
+  round(percentile_cont(0.5) within group (order by x.abn_pre_72h)::numeric, 5) as median_abn_pre_72h,
+  round(percentile_cont(0.5) within group (order by x.abn_72h)::numeric, 5) as median_abn_72h,
+  round(percentile_cont(0.5) within group (order by x.abn_168h)::numeric, 5) as median_abn_168h
 from events e
 join event_reactions r
   on r.event_id = e.id
@@ -237,7 +270,12 @@ select
   round(percentile_cont(0.5) within group (order by x.pre_excess_24h)::numeric, 5) as median_pre_excess_24h,
   round(percentile_cont(0.5) within group (order by x.pre_excess_72h)::numeric, 5) as median_pre_excess_72h,
   round(percentile_cont(0.5) within group (order by x.excess_ret_72h)::numeric, 5) as median_excess_72h,
-  round(percentile_cont(0.5) within group (order by x.excess_ret_168h)::numeric, 5) as median_excess_168h
+  round(percentile_cont(0.5) within group (order by x.excess_ret_168h)::numeric, 5) as median_excess_168h,
+  round(percentile_cont(0.5) within group (order by x.placebo_excess_168h)::numeric, 5) as median_placebo_excess_168h,
+  round(percentile_cont(0.5) within group (order by x.abn_pre_24h)::numeric, 5) as median_abn_pre_24h,
+  round(percentile_cont(0.5) within group (order by x.abn_pre_72h)::numeric, 5) as median_abn_pre_72h,
+  round(percentile_cont(0.5) within group (order by x.abn_72h)::numeric, 5) as median_abn_72h,
+  round(percentile_cont(0.5) within group (order by x.abn_168h)::numeric, 5) as median_abn_168h
 from events e
 join event_reactions r
   on r.event_id = e.id
@@ -330,7 +368,39 @@ select
       (e.detail->>'circ_supply')::numeric,
       e.magnitude_pct
     ) * 100
-  )::numeric, 4)                                                          as r2_excess_168h
+  )::numeric, 4)                                                          as r2_excess_168h,
+  round(regr_slope(
+    x.abn_pre_72h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 6)                                                          as slope_abn_pre_72h_per_pct,
+  round(regr_r2(
+    x.abn_pre_72h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 4)                                                          as r2_abn_pre_72h,
+  round(regr_slope(
+    x.abn_168h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 6)                                                          as slope_abn_168h_per_pct,
+  round(regr_r2(
+    x.abn_168h,
+    public.unlock_float_pct(
+      (e.detail->>'token_amount')::numeric,
+      (e.detail->>'circ_supply')::numeric,
+      e.magnitude_pct
+    ) * 100
+  )::numeric, 4)                                                          as r2_abn_168h
 from events e
 join event_reactions r
   on r.event_id = e.id
