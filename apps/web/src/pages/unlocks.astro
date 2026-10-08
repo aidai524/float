@@ -238,7 +238,7 @@ const CATEGORY_LABEL: Record<string, string> = {
     <p class="m-0">
       仅 cliff 解锁 · float 稀释 ≥ 0.5%（占当前流通量；缺失时回退占最大供应）· 有 Binance
       交易对且流动性达标 · <strong>市场调整</strong> = 代币收益 − BTC 同期收益（一阶，β=1）·
-      <strong>净</strong> = 事件窗口超常收益 − 安慰剂窗口（T0−21d，同一代币）超常收益 ·
+      <strong>净</strong> = 事件窗口超常收益 − 安慰剂窗口（T0−21d，历史不足回退 T0−14d，同一代币）超常收益 ·
       <strong>z</strong> = 调整后收益 /（事件前 30 天日波动 × √窗口）· 格子内「净 / 调整后」· 反应口径
       v1 · 数据源 DefiLlama（解锁历史）+ Binance（价格与 BTC 基准）。历史分布不代表未来，仅供研究，非投资建议。
     </p>

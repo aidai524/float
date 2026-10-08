@@ -1,7 +1,7 @@
 # HANDOFF —— Float（加密事件研究引擎）
 
 > 换电脑继续开发用。**先读这一份**，再读 `PLAN.md`（阶段计划）/ `TODO.md`（待办）/ `POSITIONING.md`（定位）。
-> 最后更新：2026-10-01 · 36 commits · `main` 与 `origin/main` 同步
+> 最后更新：2026-10-08 · 45 commits · `main` 与 `origin/main` 同步
 
 ---
 
@@ -20,6 +20,7 @@
 
 - Node ≥ 22、pnpm 12、git
 - GitHub SSH key：`ssh -T git@github.com` 显示 `Hi aidai524!`
+- 网络：Omarchy 本机所有外网走 `127.0.0.1:7897`；`.mise.toml` 已设 `NODE_USE_ENV_PROXY=1`（否则 Node fetch 不走代理，脚本全 ECONNRESET）；用 `mise exec -- pnpm …` 或重新激活 shell 生效
 - 可选：`psql`（要跑迁移/回填才需要）；macOS 的 launchd **不要装**（VPS 已在跑）
 
 ### 步骤
@@ -89,13 +90,14 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 |---|---|---|
 | P0–P3 | ✅ | monorepo / 契约层 / 采集 / 反应引擎 / Astro 前端（总览·日历·事件·代币） |
 | P4.1 | ✅ | Deribit DVOL 隐含波动 + 惊讶度（FOMC 1.31×，非农 0.74×） |
+| **P4.2/4.3 v2** | ✅ 代码+数据 | float 稀释（占流通）+ 市场调整（−BTC）+ z 标准化 + 3/7d 长窗 + 事前漂移 + **placebo 对照**；`event_expectation` 表 + 5 个 `_v2` 视图；`pnpm expectations` 脚本 |
 | P4.2/4.3 | ✅ 代码+DB | 解锁稀释斜率 + 接收方分类（`api.unlock_*_v1`）；前端 `/unlocks` 页 |
 | P6.1 部分 | ✅ | DefiLlama 解锁历史回填（21,506 cliff，含接收方类别/分配名） |
 | P7.1 | ✅ | 仓位计算器 `/position`（用历史回撤分布 / 隐含波动定仓位） |
 | P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器） |
 | P5.4 部分 | ✅ | 每日刷新 `pnpm daily`；VPS cron 安装脚本 |
 
-**迁移**：`supabase/migrations/0001…0014`（`0013`=DefiLlama 源+`resolve_source_events()`，`0014`=解锁统计视图）
+**迁移**：`supabase/migrations/0001…0015`（`0013`=DefiLlama 源+`resolve_source_events()`，`0014`=解锁统计视图 v1，`0015`=expectation/placebo/净效应 + 解锁 v2 视图）
 
 ---
 
@@ -142,8 +144,13 @@ price_candles     33,140
 dvol_points       83,168
 ```
 
-**Phase 4.2 结果（弱信号，需改进）**：`api.unlock_slope_v1` → N=1,399，`slope_4h_per_pct = -0.000412`，**R²=0.0015**。
-即「每 1% 稀释 → 4h 约 -0.04%」，但解释力极低，不能作为卖点。见「下一步 #2」。
+**Phase 4.2/4.3 v2 结果（N=1,364，float ≥ 0.5%，流动性达标）**：
+- 表观：解锁后 7 天中位 **−2.70%**（相对 BTC），≥10% 桶 −5.23%
+- **但加 placebo 对照（同代币 T0−21d/14d 非事件窗口）后：净 7 天中位 +0.29%、均值 −0.22%（t=−0.36）→ 不显著**
+- 分桶净 7 天均值：≥10% −1.37%（t=−0.24）· 1–2% −1.45%（t=−1.56）· 其余 |t|<1；净 7 天斜率 +0.11%/1% float（R²=0.0007）
+- 净前 3 天：均值 −0.73%（t=−2.05，边缘）
+- **结论：解锁规模不预测超常收益；表观「解锁砸盘」主要是代币自身的非事件漂移。产品价值在「分布 + 对照框架」，不是方向性预测**
+- 口径 v1 斜率（`unlock_slope_v1`）：N=1,399、R²=0.0015，保留作历史对照
 
 ---
 
@@ -154,15 +161,15 @@ dvol_points       83,168
 2. **确认 VPS 两个 cron**：`scripts/install-daily-cron.sh status` + `crontab -l`（应有 `float-daily` 和 `float-unlocks`）。
 3. 确认工作区干净、已推送（当前 `048d15a` 是干净的）。
 
-### P1 — 让解锁信号真的有用（Phase 4.2/4.3 v2）
-现在 R²≈0，问题可能是：把「日度线性排放」和「悬崖解锁」混在一起、没做流动性过滤、没分接收方。
-- 只用 cliff 且 `magnitude_pct >= 1%`；按 `tokens.adv_30d` 过滤微盘
-- 分接收方看斜率（insiders / privateSale 通常比 community 重）
-- 引入更大的观察窗（24h / 7d）和事件前基线
-- 目标：给出**有统计意义**的「稀释 → 反应」区间，而不是一个 R²≈0 的斜率
+### P1 — 解锁 v2 已完成，转向上币预期（Phase 4.4）
+解锁方向性信号已证伪（见上）；不要再花时间找「稀释 → 收益」斜率。下一步做**上币预期**：
+
+- 前置：`tokens.market_cap` 全空 → 需 Phase 6.5 CoinGecko 元数据（本机经 7897 代理可达）
+- 降级方案（不阻塞）：代币类别 × ADV 流动性档 → 上币反应区间（数据已有：listing_cex 427 条、category 490/512、adv 375/512）
+- 交易所层级维度退化成单一 Binance，需先补 Bybit/OKX 公告源
 
 ### P2 — 上线与分发（Phase 5）
-- 5.2 SEO + 性能：**首页 HTML 3.5MB**（把所有事件渲染进去了），Lighthouse ≥90 需分页/懒加载
+- 5.2 SEO + 性能：**首页 HTML 4.7MB**（把所有事件渲染进去了），无 sitemap/robots
 - 5.3 公开 Telegram 频道：每日简报（未来 24h 解锁 + 同类基准，含 N 与口径版本）
 - 5.5 全站合规文案（无投资建议）
 
@@ -193,12 +200,14 @@ TradingView widget（商用条款）、交易执行、社交情绪、自建解�
 ```
 packages/data-layer/     采集 + 反应引擎（与环境无关，可在 Node/Worker 跑）
   src/sources/defillama-unlocks.ts   DefiLlama __NEXT_DATA__ 解析
+  src/expectations.ts               市场调整 / 长窗 / placebo 净效应（纯函数）
 supabase/migrations/     0001…0014（契约优先）
 scripts/
   probe-sources.ts                 数据源可达性
   backfill-unlocks.ts              DefiLlama 回填（psql 解析）
   fetch-defillama-browser.mjs      浏览器快照（patchright/playwright × headless/headful）
   compute-reactions.ts             反应引擎（--min-pct）
+  compute-expectations.ts          市场调整 + 长窗 + 事前漂移 + placebo（pnpm expectations）
   install-daily-cron.sh / install-unlocks-cron.sh
 apps/web/                Astro SSG 前端
 apps/worker/             Cloudflare Worker（静态资源 + /api + cron）

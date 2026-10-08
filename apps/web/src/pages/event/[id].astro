@@ -243,7 +243,7 @@ const jsonLd = {
         {
           expectation && (expectation.abn_pre_72h != null || expectation.abn_168h != null) && (
             <p class="mb-0 mt-3 text-[12px] text-[var(--color-mut)]">
-              安慰剂对照（T0−21d 同一代币的非事件窗口）：前 3 天净{" "}
+              安慰剂对照（同一代币非事件窗口 T0−21d / 14d）：前 3 天净{" "}
               <span class={pctClass(expectation.abn_pre_72h)}>
                 {pct(expectation.abn_pre_72h)}
               </span>{" "}
