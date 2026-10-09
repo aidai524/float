@@ -37,6 +37,34 @@ export function eventTypeLabel(t: string): string {
   return EVENT_TYPE_LABEL[t] ?? t;
 }
 
+/** 代币类别（Jev 分类）中文名 */
+export const TOKEN_CATEGORY_LABEL: Record<string, string> = {
+  defi: "DeFi",
+  l1: "L1",
+  l2: "L2",
+  meme: "Meme",
+  infrastructure: "基础设施",
+  rwa: "RWA",
+  stablecoin: "稳定币",
+  gaming: "游戏",
+  ai: "AI",
+  exchange: "交易所",
+  payment: "支付",
+  privacy: "隐私",
+  other: "其他",
+};
+
+/** 上币形式（由公告标题规则判定）中文名 */
+export const LISTING_FORM_LABEL: Record<string, string> = {
+  new_listing: "现货新币",
+  futures: "合约（永续）",
+  product_add: "产品位（Earn/Convert/Margin）",
+  rwa_bstock: "RWA bStock",
+  seed_tag: "现货新币 · Seed Tag",
+  launchpool: "Launchpool / HODLer",
+  other: "其他",
+};
+
 export function fmtTs(ts: string | null, withTime = true): string {
   if (!ts) return "—";
   return new Date(ts)

@@ -16,6 +16,11 @@ import {
 } from "../src/index";
 import {
   EVENT_EXPECTATION_V1_COLUMNS,
+  LISTING_BASELINE_V1_COLUMNS,
+  LISTING_CATEGORY_STATS_V1_COLUMNS,
+  LISTING_COHORT_V1_COLUMNS,
+  LISTING_FDV_STATS_V1_COLUMNS,
+  LISTING_FORM_STATS_V1_COLUMNS,
   UNLOCK_CATEGORY_STATS_V2_COLUMNS,
   UNLOCK_COHORT_V2_COLUMNS,
   UNLOCK_FLOAT_STATS_V2_COLUMNS,
@@ -147,5 +152,35 @@ describe("契约：api.* 视图列与 zod schema 一致", () => {
 
   it("api.unlock_slope_v2", () => {
     expect(extractViewColumns(SQL, "api.unlock_slope_v2")).toEqual([...UNLOCK_SLOPE_V2_COLUMNS]);
+  });
+
+  it("api.listing_cohort_v1", () => {
+    expect(extractViewColumns(SQL, "api.listing_cohort_v1")).toEqual([
+      ...LISTING_COHORT_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.listing_form_stats_v1", () => {
+    expect(extractViewColumns(SQL, "api.listing_form_stats_v1")).toEqual([
+      ...LISTING_FORM_STATS_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.listing_category_stats_v1", () => {
+    expect(extractViewColumns(SQL, "api.listing_category_stats_v1")).toEqual([
+      ...LISTING_CATEGORY_STATS_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.listing_fdv_stats_v1", () => {
+    expect(extractViewColumns(SQL, "api.listing_fdv_stats_v1")).toEqual([
+      ...LISTING_FDV_STATS_V1_COLUMNS,
+    ]);
+  });
+
+  it("api.listing_baseline_v1", () => {
+    expect(extractViewColumns(SQL, "api.listing_baseline_v1")).toEqual([
+      ...LISTING_BASELINE_V1_COLUMNS,
+    ]);
   });
 });

@@ -59,10 +59,17 @@ const minPct = (() => {
 /** 跳过已算过（当前口径）的事件（默认开启，加快重跑） */
 const skipExisting = !process.argv.includes("--recompute");
 
+/** listing 事件的 1m 窗口长度（小时）：公告常早于开盘，需要更长尾窗 */
+const listingWindowHours = (() => {
+  const i = process.argv.indexOf("--listing-window-hours");
+  return i >= 0 ? Number(process.argv[i + 1]) : 96;
+})();
+
 interface EventRow {
   id: number;
   token_symbol: string;
   t0: string;
+  event_type: string;
 }
 
 /** Binance K 线分页拉取 */
@@ -162,7 +169,7 @@ async function main() {
   const cutoff = new Date(Date.now() - minAgeHours * 3600_000).toISOString();
   let q = db
     .from("events")
-    .select("id,token_symbol,t0")
+    .select("id,token_symbol,t0,event_type")
     .lte("t0", cutoff)
     .order("t0", { ascending: true });
   if (typeFilter) q = q.like("event_type", `${typeFilter}%`);
@@ -236,10 +243,13 @@ async function main() {
     for (const e of evs) {
       const t0 = new Date(e.t0).getTime();
       // --- 1m 事件窗口 ---
+      // listing：公告可能早于开盘数小时到数天，锚点在首个成交时刻；给足 96h
+      const windowHours = e.event_type.startsWith("listing") ? listingWindowHours : 25;
       const m1From = t0 - 60 * MINUTE;
-      const m1To = t0 + 25 * 60 * MINUTE;
+      const m1To = t0 + windowHours * 60 * MINUTE;
       let m1 = await loadCandles(symbol, "1m", m1From, m1To);
-      if (m1.length < 1400) {
+      const covered = m1.length ? (m1[m1.length - 1]?.ts ?? 0) : 0;
+      if (m1.length < 1400 || covered < m1To - 30 * MINUTE) {
         const fetched = await fetchKlines(pair, "1m", m1From, m1To);
         if (!fetched) {
           skipped[symbol] = (skipped[symbol] ?? 0) + 1;

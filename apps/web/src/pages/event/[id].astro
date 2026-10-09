@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import PriceChart from "../../components/PriceChart";
-import { getBaseline, getEventCandles, getEventExpectation, listEvents } from "../../lib/db";
+import { getBaseline, getEventCandles, getEventExpectation, getListingBaseline, getListingCategoryStat, listEventsForPaths } from "../../lib/db";
 import {
   ASSET_COLOR,
   eventFacts,
@@ -13,10 +13,11 @@ import {
   liquidityLabel,
   pct,
   pctClass,
+  TOKEN_CATEGORY_LABEL,
 } from "../../lib/format";
 
 export async function getStaticPaths() {
-  const events = await listEvents(1000);
+  const events = await listEventsForPaths(1000);
   return events.map((e) => ({ params: { id: String(e.id) }, props: { event: e } }));
 }
 
@@ -24,6 +25,12 @@ const { event } = Astro.props;
 const e = event;
 const baseline = await getBaseline(e.id);
 const expectation = await getEventExpectation(e.id);
+const listingBaseline = e.event_type.startsWith("listing")
+  ? await getListingBaseline(e.id)
+  : null;
+const listingStat = listingBaseline
+  ? await getListingCategoryStat(listingBaseline.token_category)
+  : null;
 
 const { interval, candles } = await getEventCandles(e.token_symbol, e.t0);
 const t = new Date(e.t0).getTime();
@@ -195,6 +202,76 @@ const jsonLd = {
       </div>
     </div>
   </section>
+
+  {
+    listingBaseline && listingStat && (
+      <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+        <h2 class="m-0 text-[13px] font-semibold">
+          同类上币预期（{TOKEN_CATEGORY_LABEL[listingBaseline.token_category] ??
+            listingBaseline.token_category}）
+        </h2>
+        <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+          基准 = 同代币类别的 Binance 上币事件（N={listingStat.n}，其中 24h 可用{" "}
+          {listingStat.n_24h}）；分位 = 本事件在同类中的位置。历史分布不代表未来。
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px]">
+            <thead>
+              <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+                <th class="px-3 py-2 text-left">窗口</th>
+                <th class="px-3 py-2 text-right">本事件</th>
+                <th class="px-3 py-2 text-right">同类中位</th>
+                <th class="px-3 py-2 text-right">同类 25–75</th>
+                <th class="px-3 py-2 text-right">同类分位</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {
+                  label: "1h",
+                  ret: e.ret_1h,
+                  med: listingStat.median_1h,
+                  p25: null as number | null,
+                  p75: null as number | null,
+                  pctv: listingBaseline.pct_1h,
+                },
+                {
+                  label: "4h",
+                  ret: e.ret_4h,
+                  med: listingStat.median_4h,
+                  p25: listingStat.p25_4h,
+                  p75: listingStat.p75_4h,
+                  pctv: listingBaseline.pct_4h,
+                },
+                {
+                  label: "24h",
+                  ret: e.ret_24h,
+                  med: listingStat.median_24h,
+                  p25: listingStat.p25_24h,
+                  p75: listingStat.p75_24h,
+                  pctv: listingBaseline.pct_24h,
+                },
+              ].map((r) => (
+                <tr class="border-b border-[var(--color-line)]">
+                  <td class="px-3 py-2">{r.label}</td>
+                  <td class={`mono px-3 py-2 text-right font-semibold ${pctClass(r.ret)}`}>
+                    {pct(r.ret)}
+                  </td>
+                  <td class={`mono px-3 py-2 text-right ${pctClass(r.med)}`}>{pct(r.med)}</td>
+                  <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                    {r.p25 == null ? "—" : `${pct(r.p25)} ~ ${pct(r.p75)}`}
+                  </td>
+                  <td class="mono px-3 py-2 text-right">
+                    {r.pctv == null ? "—" : `${Math.round(Number(r.pctv) * 100)} 分位`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
 
   {
     expectation && excessRows.some((r) => r.excess != null) && (

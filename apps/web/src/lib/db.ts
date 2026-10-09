@@ -9,6 +9,10 @@ import type {
   EventExpectationV1,
   EventTypeStatsV1,
   EventV1,
+  ListingBaselineV1,
+  ListingCategoryStat,
+  ListingFdvStat,
+  ListingFormStat,
   TokenV1,
   UnlockCategoryStat,
   UnlockCategoryStatV2,
@@ -41,6 +45,34 @@ export async function getEvent(id: number): Promise<EventV1 | null> {
   const { data, error } = await api.from("event_detail_v1").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
   return (data as EventV1) ?? null;
+}
+
+/**
+ * 事件静态路径：最新的 limit 条 ∪ 所有有反应的事件。
+ * 只用「最新 N 条」会漏掉历史上币/宏观等有详情面板的事件（t0 早但功能完整）。
+ */
+export async function listEventsForPaths(limit = 1000): Promise<EventV1[]> {
+  const newest = await listEvents(limit);
+  const seen = new Set(newest.map((e) => e.id));
+
+  const { data, error } = await api
+    .from("events_v1")
+    .select("id")
+    .not("base_ts", "is", null)
+    .limit(100000);
+  if (error) throw error;
+  const extraIds = ((data ?? []) as Array<{ id: number }>)
+    .map((r) => r.id)
+    .filter((id) => !seen.has(id));
+
+  const extra: EventV1[] = [];
+  for (let i = 0; i < extraIds.length; i += 300) {
+    const chunk = extraIds.slice(i, i + 300);
+    const { data: rows, error: e2 } = await api.from("events_v1").select("*").in("id", chunk);
+    if (e2) throw e2;
+    extra.push(...((rows ?? []) as EventV1[]));
+  }
+  return [...newest, ...extra];
 }
 
 export async function listTokens(limit = 400): Promise<TokenV1[]> {
@@ -205,4 +237,63 @@ export async function getEventExpectation(eventId: number): Promise<EventExpecta
     .maybeSingle();
   if (error) throw error;
   return (data as EventExpectationV1) ?? null;
+}
+
+// ---------- Phase 4.4：上币特征化预期 ----------
+
+/** api.listing_form_stats_v1 —— 按上币形式 */
+export async function listListingFormStats(minN = 5): Promise<ListingFormStat[]> {
+  const { data, error } = await api
+    .from("listing_form_stats_v1")
+    .select("*")
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ListingFormStat[];
+}
+
+/** api.listing_category_stats_v1 —— 按代币类别 */
+export async function listListingCategoryStats(minN = 5): Promise<ListingCategoryStat[]> {
+  const { data, error } = await api
+    .from("listing_category_stats_v1")
+    .select("*")
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ListingCategoryStat[];
+}
+
+/** api.listing_fdv_stats_v1 —— 按 FDV 档（覆盖受限） */
+export async function listListingFdvStats(minN = 5): Promise<ListingFdvStat[]> {
+  const { data, error } = await api
+    .from("listing_fdv_stats_v1")
+    .select("*")
+    .gte("n", minN)
+    .order("n", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ListingFdvStat[];
+}
+
+/** api.listing_baseline_v1 —— 单事件在同类代币类别中的分位 */
+export async function getListingBaseline(eventId: number): Promise<ListingBaselineV1 | null> {
+  const { data, error } = await api
+    .from("listing_baseline_v1")
+    .select("*")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ListingBaselineV1) ?? null;
+}
+
+/** api.listing_category_stats_v1 —— 单个类别的统计（事件详情用） */
+export async function getListingCategoryStat(
+  category: string,
+): Promise<ListingCategoryStat | null> {
+  const { data, error } = await api
+    .from("listing_category_stats_v1")
+    .select("*")
+    .eq("token_category", category)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ListingCategoryStat) ?? null;
 }

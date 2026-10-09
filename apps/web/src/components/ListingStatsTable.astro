@@ -1,0 +1,81 @@
+---
+import type { ListingStatsV1 } from "../lib/types";
+
+interface Row extends ListingStatsV1 {
+  label: string;
+}
+interface Props {
+  rows: Row[];
+  labelHeader: string;
+}
+const { rows, labelHeader } = Astro.props;
+
+const pctSigned = (v: number | null, digits = 2) =>
+  v == null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(digits)}%`;
+const pctPlain = (v: number | null, digits = 0) =>
+  v == null ? "—" : `${(v * 100).toFixed(digits)}%`;
+const cls = (v: number | null) =>
+  v == null
+    ? "text-[var(--color-mut)]"
+    : v > 0
+      ? "text-emerald-400"
+      : v < 0
+        ? "text-rose-400"
+        : "text-[var(--color-mut)]";
+---
+
+<div class="overflow-x-auto">
+  <table class="w-full text-[12px] tabular-nums">
+    <thead class="text-[var(--color-mut)]">
+      <tr class="text-left">
+        <th class="py-1 font-normal">{labelHeader}</th>
+        <th class="py-1 text-right font-normal">N</th>
+        <th class="py-1 text-right font-normal">1h 中位</th>
+        <th class="py-1 text-right font-normal">4h 中位</th>
+        <th class="py-1 text-right font-normal">4h 25–75</th>
+        <th class="py-1 text-right font-normal">24h 中位</th>
+        <th class="py-1 text-right font-normal">24h 25–75</th>
+        <th class="py-1 text-right font-normal">24h N</th>
+        <th class="py-1 text-right font-normal">24h 上涨占比</th>
+        <th class="py-1 text-right font-normal">4h 最深回撤中位</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((r) => (
+          <tr class="border-t border-[var(--color-line)]">
+            <td class="py-1">{r.label}</td>
+            <td class="py-1 text-right">{r.n}</td>
+            <td class={`py-1 text-right font-semibold ${cls(r.median_1h)}`}>
+              {pctSigned(r.median_1h)}
+            </td>
+            <td class={`py-1 text-right font-semibold ${cls(r.median_4h)}`}>
+              {pctSigned(r.median_4h)}
+            </td>
+            <td class="py-1 text-right text-[var(--color-mut)]">
+              {pctSigned(r.p25_4h, 1)} ~ {pctSigned(r.p75_4h, 1)}
+            </td>
+            <td class={`py-1 text-right ${cls(r.median_24h)}`}>{pctSigned(r.median_24h)}</td>
+            <td class="py-1 text-right text-[var(--color-mut)]">
+              {pctSigned(r.p25_24h, 1)} ~ {pctSigned(r.p75_24h, 1)}
+            </td>
+            <td class="py-1 text-right">{r.n_24h}</td>
+            <td class="py-1 text-right">{pctPlain(r.pos_24h)}</td>
+            <td class={`py-1 text-right ${cls(r.median_max_dd)}`}>
+              {pctSigned(r.median_max_dd)}
+            </td>
+          </tr>
+        ))
+      }
+      {
+        rows.length === 0 && (
+          <tr>
+            <td colspan="10" class="py-2 text-[var(--color-mut)]">
+              样本积累中
+            </td>
+          </tr>
+        )
+      }
+    </tbody>
+  </table>
+</div>

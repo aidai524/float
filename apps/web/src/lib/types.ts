@@ -248,8 +248,7 @@ export interface UnlockCategoryStatV2 {
   median_abn_168h: number | null;
 }
 
-/** api.unlock_slope_v2 —— 每 1% float 稀释对应的市场调整后 4h 收益 */
-export interface UnlockSlopeV2 {
+/** api.unlock_slope_v2 —— 每 1% float 稀释对应的市场调整后 4h 收益 */ export interface UnlockSlopeV2 {
   n: number;
   n_excess: number;
   slope_excess_4h_per_pct: number | null;
@@ -266,4 +265,67 @@ export interface UnlockSlopeV2 {
   r2_abn_pre_72h: number | null;
   slope_abn_168h_per_pct: number | null;
   r2_abn_168h: number | null;
+}
+
+// ---------- Phase 4.4：上币特征化预期 ----------
+
+/** api.listing_cohort_v1 —— 上币事件队列（每事件一行） */
+export interface ListingCohortV1 {
+  event_id: number;
+  token_symbol: string;
+  t0: string;
+  token_category: string;
+  asset_class: AssetClass;
+  listing_form: string;
+  fdv_usd: number | null;
+  fdv_bucket: string;
+  ret_5m: number | null;
+  ret_15m: number | null;
+  ret_1h: number | null;
+  ret_4h: number | null;
+  ret_24h: number | null;
+  max_drawdown: number | null;
+  max_favorable: number | null;
+  base_after_t0: boolean | null;
+}
+
+/** 上币统计共用形状（形式 / 类别 / FDV 档） */
+export interface ListingStatsV1 {
+  n: number;
+  n_1h: number;
+  n_4h: number;
+  n_24h: number;
+  median_1h: number | null;
+  median_4h: number | null;
+  median_24h: number | null;
+  p25_4h: number | null;
+  p75_4h: number | null;
+  p25_24h: number | null;
+  p75_24h: number | null;
+  pos_1h: number | null;
+  pos_4h: number | null;
+  pos_24h: number | null;
+  median_max_dd: number | null;
+}
+
+export interface ListingFormStat extends ListingStatsV1 {
+  listing_form: string;
+}
+
+export interface ListingCategoryStat extends ListingStatsV1 {
+  token_category: string;
+}
+
+export interface ListingFdvStat extends ListingStatsV1 {
+  fdv_bucket: string;
+}
+
+/** api.listing_baseline_v1 —— 单事件在同类代币类别中的分位 */
+export interface ListingBaselineV1 {
+  event_id: number;
+  token_category: string;
+  listing_form: string;
+  pct_1h: number | null;
+  pct_4h: number | null;
+  pct_24h: number | null;
 }
