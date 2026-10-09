@@ -472,9 +472,14 @@ interface DataSource {
   - 净前 3 天：均值 −0.73%（t=−2.05，边缘）；即事前弱负漂移有一定信号但不足以单独下结论
   - **最终结论：现行数据下，解锁规模不预测超常收益；表观「解锁砸盘」主要是代币自身的非事件漂移。产品价值在「分布 + 对照框架」，而非方向性预测**
 - 4.3 **按接收方分类（v2）** ✅：接收方表接入市场调整口径（`unlock_category_stats_v2`）
-- 4.4 **上币特征化预期**：代币类别 × 市值档 × 交易所层级 → 预期区间
-  - 阻塞：`tokens.market_cap` 为空（需 6.5 CoinGecko）；当前 listing 全部来自 Binance，交易所层级维度退化
-  - 可用替代：代币类别 × ADV 流动性档
+- 4.4 **上币特征化预期（v1）** ✅：上币形式 × 代币类别 × FDV 档 → 中位与 25–75 区间
+  - 迁移 0016：`public.listing_form()`（标题规则，可复算）+ `api.listing_cohort_v1` / `listing_form_stats_v1` / `listing_category_stats_v1` / `listing_fdv_stats_v1` / `listing_baseline_v1`
+  - 前端：`/listings` 页 + 事件详情「同类上币预期」面板；反应引擎对 listing 事件改用 96h 窗口（公告常早于开盘），24h 覆盖从 10/163 → 163/164
+  - 详情页静态路径改为「最新 1000 ∪ 所有有反应的事件」，历史上币/宏观页可达
+  - **实测（379 条，Binance 公告）**：现货新币（N=164）1h 中位 −4.6% · 4h −7.4% · **24h −10.2%（上涨占比仅 24%）**；Seed Tag（N=31）1h −6.5%（10% 上涨）；合约 −4.9%/−14.5%；**RWA bStock（N=36）≈ 0，是唯一不跌的形式**
+  - 类别：DeFi 24h −13.3%（上涨 18%）· Meme −12.8% · L1 −9.9% · 基础设施 −7.5% · RWA/稳定币 ≈ 0
+  - **结论：上币公告不是「利好」，而是系统性「公开即顶」；产品位（bStock/稳定币）例外**
+  - 限制：FDV 档仅覆盖约 1/3（DefiLlama 最大供应；CoinGecko 免费档只给 365 天历史市值）；交易所层级仍退化为单一 Binance；一次公告多代币时样本相关
 - 4.5 契约扩展 ✅：`api.event_expectation_v1` 已建立；DVOL 惊讶度在 `events_v1`（未单独立 `api.surprise_v1`）
 - 4.6 前端 ✅：事件详情显示 DVOL 惊讶度 + 「市场调整（vs BTC）」面板；`/unlocks` 主指标改为 float 稀释 + 剔除 BTC + z
 
@@ -484,7 +489,7 @@ interface DataSource {
 - [x] 解锁显示归一化指标及其样本量（v2：float 稀释 + 市场调整）
 - [x] 按接收方的反应差异有 N、口径版本与置信说明
 - [x] 惊讶度可复算，口径写入 `methodology_version`（expectation = v2）
-- [ ] 4.4 上币预期区间（依赖 6.5 市值数据）
+- [x] 4.4 上币预期区间（v1：形式 × 类别 × FDV；FDV 覆盖约 1/3）
 
 **依赖**：无（Deribit API 免费，已实测可用）
 

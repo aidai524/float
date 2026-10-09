@@ -91,13 +91,14 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | P0–P3 | ✅ | monorepo / 契约层 / 采集 / 反应引擎 / Astro 前端（总览·日历·事件·代币） |
 | P4.1 | ✅ | Deribit DVOL 隐含波动 + 惊讶度（FOMC 1.31×，非农 0.74×） |
 | **P4.2/4.3 v2** | ✅ 代码+数据 | float 稀释（占流通）+ 市场调整（−BTC）+ z 标准化 + 3/7d 长窗 + 事前漂移 + **placebo 对照**；`event_expectation` 表 + 5 个 `_v2` 视图；`pnpm expectations` 脚本 |
+| **P4.4** | ✅ v1 | 上币形式 × 类别 × FDV 档 → `/listings` 页 + 事件详情面板；listing 反应窗口改 96h；**现货新币 24h 中位 −10.2%（24% 上涨），RWA bStock ≈ 0** |
 | P4.2/4.3 | ✅ 代码+DB | 解锁稀释斜率 + 接收方分类（`api.unlock_*_v1`）；前端 `/unlocks` 页 |
 | P6.1 部分 | ✅ | DefiLlama 解锁历史回填（21,506 cliff，含接收方类别/分配名） |
 | P7.1 | ✅ | 仓位计算器 `/position`（用历史回撤分布 / 隐含波动定仓位） |
 | P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器） |
 | P5.4 部分 | ✅ | 每日刷新 `pnpm daily`；VPS cron 安装脚本 |
 
-**迁移**：`supabase/migrations/0001…0015`（`0013`=DefiLlama 源+`resolve_source_events()`，`0014`=解锁统计视图 v1，`0015`=expectation/placebo/净效应 + 解锁 v2 视图）
+**迁移**：`supabase/migrations/0001…0016`（`0013`=DefiLlama 源+`resolve_source_events()`，`0014`=解锁统计 v1，`0015`=expectation/placebo/净效应 + 解锁 v2，`0016`=上币特征化预期）
 
 ---
 
@@ -161,12 +162,10 @@ dvol_points       83,168
 2. **确认 VPS 两个 cron**：`scripts/install-daily-cron.sh status` + `crontab -l`（应有 `float-daily` 和 `float-unlocks`）。
 3. 确认工作区干净、已推送（当前 `048d15a` 是干净的）。
 
-### P1 — 解锁 v2 已完成，转向上币预期（Phase 4.4）
-解锁方向性信号已证伪（见上）；不要再花时间找「稀释 → 收益」斜率。下一步做**上币预期**：
-
-- 前置：`tokens.market_cap` 全空 → 需 Phase 6.5 CoinGecko 元数据（本机经 7897 代理可达）
-- 降级方案（不阻塞）：代币类别 × ADV 流动性档 → 上币反应区间（数据已有：listing_cex 427 条、category 490/512、adv 375/512）
-- 交易所层级维度退化成单一 Binance，需先补 Bybit/OKX 公告源
+### P1 — Phase 4 全部完成 ✅（4.1 / 4.2–4.3 v2 / 4.4）
+- 解锁方向性信号已证伪（placebo 净效应 t=−0.36）；上币信号强且可用（现货新币 24h −10.2%，RWA 除外）
+- 已完成：`/unlocks` v2（float + 剔除 BTC + 净效应）、`/listings`（形式/类别/FDV）、事件详情双面板
+- 可继续深化的点：FDV 覆盖（CoinGecko 免费档只给 365 天历史；可改用「上币时价格 × 当前 max/total supply」或付费源）、Bybit/OKX 公告源补交易所层级
 
 ### P2 — 上线与分发（Phase 5）
 - 5.2 SEO + 性能：**首页 HTML 4.7MB**（把所有事件渲染进去了），无 sitemap/robots
@@ -209,6 +208,7 @@ scripts/
   compute-reactions.ts             反应引擎（--min-pct）
   compute-expectations.ts          市场调整 + 长窗 + 事前漂移 + placebo（pnpm expectations）
   install-daily-cron.sh / install-unlocks-cron.sh
+apps/web/                Astro SSG 前端（/listings = 上币特征化预期）
 apps/web/                Astro SSG 前端
 apps/worker/             Cloudflare Worker（静态资源 + /api + cron）
 DATA-LAYER.md / PLAN.md / TODO.md / POSITIONING.md / DEPLOY-VPS.md
