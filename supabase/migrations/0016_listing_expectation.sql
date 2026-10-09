@@ -28,16 +28,35 @@ language sql immutable as $$
   end;
 $$;
 
--- ---------- 工具：代币供应（来自 DefiLlama 解锁事件的快照，只做规模档） ----------
-create or replace view public.token_supply as
-select
-  token_symbol,
-  max((detail->>'max_supply')::numeric) as max_supply,
-  max((detail->>'circ_supply')::numeric) as circ_supply
-from events
-where detail ? 'max_supply'
-  and (detail->>'max_supply')::numeric > 0
-group by token_symbol;
+-- ---------- 工具：代币供应（物化表，避免每个视图扫描 2 万+ events 的 jsonb） ----------
+-- 解锁数据导入后调用：select public.refresh_token_supply();
+drop view if exists public.token_supply cascade;
+create table if not exists public.token_supply (
+  token_symbol text primary key,
+  max_supply   numeric,
+  circ_supply  numeric,
+  updated_at   timestamptz not null default now()
+);
+
+create or replace function public.refresh_token_supply() returns void
+language sql as $$
+  insert into public.token_supply (token_symbol, max_supply, circ_supply, updated_at)
+  select
+    token_symbol,
+    max((detail->>'max_supply')::numeric),
+    max((detail->>'circ_supply')::numeric),
+    now()
+  from events
+  where detail ? 'max_supply'
+    and (detail->>'max_supply')::numeric > 0
+  group by token_symbol
+  on conflict (token_symbol) do update set
+    max_supply = excluded.max_supply,
+    circ_supply = excluded.circ_supply,
+    updated_at = now();
+$$;
+
+select public.refresh_token_supply();
 
 -- ---------- 契约：上币事件队列（每事件一行） ----------
 create or replace view api.listing_cohort_v1 as

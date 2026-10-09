@@ -31,6 +31,27 @@ if (!url || !key) {
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 const api = supabase.schema("api");
 
+/**
+ * PostgREST 偶发 57014（语句超时）/连接抖动时重试；连续失败照常抛出。
+ * 构建期多个页面并发请求共享免费连接池，这一层保证不因单次抖动失败。
+ */
+async function withRetry<T>(
+  fn: () => PromiseLike<{
+    data: T | null;
+    error: { code?: string; message?: string } | null;
+  }>,
+  attempts = 3,
+): Promise<T | null> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    const { data, error } = await fn();
+    if (!error) return data;
+    lastErr = error;
+    await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+  }
+  throw lastErr;
+}
+
 export async function listEvents(limit = 1000): Promise<EventV1[]> {
   const { data, error } = await api
     .from("events_v1")
@@ -243,57 +264,46 @@ export async function getEventExpectation(eventId: number): Promise<EventExpecta
 
 /** api.listing_form_stats_v1 —— 按上币形式 */
 export async function listListingFormStats(minN = 5): Promise<ListingFormStat[]> {
-  const { data, error } = await api
-    .from("listing_form_stats_v1")
-    .select("*")
-    .gte("n", minN)
-    .order("n", { ascending: false });
-  if (error) throw error;
+  const data = await withRetry(() =>
+    api.from("listing_form_stats_v1").select("*").gte("n", minN).order("n", {
+      ascending: false,
+    }),
+  );
   return (data ?? []) as ListingFormStat[];
 }
 
 /** api.listing_category_stats_v1 —— 按代币类别 */
 export async function listListingCategoryStats(minN = 5): Promise<ListingCategoryStat[]> {
-  const { data, error } = await api
-    .from("listing_category_stats_v1")
-    .select("*")
-    .gte("n", minN)
-    .order("n", { ascending: false });
-  if (error) throw error;
+  const data = await withRetry(() =>
+    api.from("listing_category_stats_v1").select("*").gte("n", minN).order("n", {
+      ascending: false,
+    }),
+  );
   return (data ?? []) as ListingCategoryStat[];
 }
 
 /** api.listing_fdv_stats_v1 —— 按 FDV 档（覆盖受限） */
 export async function listListingFdvStats(minN = 5): Promise<ListingFdvStat[]> {
-  const { data, error } = await api
-    .from("listing_fdv_stats_v1")
-    .select("*")
-    .gte("n", minN)
-    .order("n", { ascending: false });
-  if (error) throw error;
+  const data = await withRetry(() =>
+    api.from("listing_fdv_stats_v1").select("*").gte("n", minN).order("n", {
+      ascending: false,
+    }),
+  );
   return (data ?? []) as ListingFdvStat[];
 }
 
 /** api.listing_baseline_v1 —— 单事件在同类代币类别中的分位 */
 export async function getListingBaseline(eventId: number): Promise<ListingBaselineV1 | null> {
-  const { data, error } = await api
-    .from("listing_baseline_v1")
-    .select("*")
-    .eq("event_id", eventId)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as ListingBaselineV1) ?? null;
+  return withRetry<ListingBaselineV1>(() =>
+    api.from("listing_baseline_v1").select("*").eq("event_id", eventId).maybeSingle(),
+  );
 }
 
 /** api.listing_category_stats_v1 —— 单个类别的统计（事件详情用） */
 export async function getListingCategoryStat(
   category: string,
 ): Promise<ListingCategoryStat | null> {
-  const { data, error } = await api
-    .from("listing_category_stats_v1")
-    .select("*")
-    .eq("token_category", category)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as ListingCategoryStat) ?? null;
+  return withRetry<ListingCategoryStat>(() =>
+    api.from("listing_category_stats_v1").select("*").eq("token_category", category).maybeSingle(),
+  );
 }

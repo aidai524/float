@@ -85,7 +85,7 @@ function resolveViaPsql(): { events: number; provenance: number } | null {
   const bins = [process.env.PSQL_BIN, "/opt/homebrew/opt/libpq/bin/psql", "psql"].filter(
     Boolean,
   ) as string[];
-  const sql = `set statement_timeout='0'; select * from resolve_source_events('${SOURCE_ID}');`;
+  const sql = `set statement_timeout='0'; select * from resolve_source_events('${SOURCE_ID}'); do $$ begin if to_regprocedure('public.refresh_token_supply()') is not null then perform public.refresh_token_supply(); end if; end $$;`;
   for (const bin of bins) {
     try {
       const out = execFileSync(
