@@ -506,15 +506,15 @@ interface DataSource {
   - **首页 HTML 4.36MB → 324KB**；修复首页「预期 vs 实际」表为空（宏观事件不在最新 1000 条）与计数卡
   - Lighthouse 移动端：**performance 100 · accessibility 100 · SEO 100 · best-practices 96**；LCP 1.1s
   - 剩余：把 sitemap 提交 Google Search Console / Bing（需你的账号）；LCP 1.6s 含本机代理延迟
-- 5.3 **公开 Telegram 频道**：每日自动简报（未来 24h 事件 + 同类基准），**无需账号系统**
-- 5.4 **Cron 定时任务**：解锁轮询、反应重算、简报推送（替代人工跑脚本）
-- 5.5 免责声明与合规文案（全站无投资建议话术）
+- 5.3 **公开 Telegram 频道** ✅ 代码：`pnpm digest`（未配置凭据自动 dry-run），含未来 24h 解锁 / 未来 7 天宏观 / 过去 24h 实际 vs 预期；待 bot token + 频道 ID 上线
+- 5.4 **Cron 定时任务** ✅：VPS daily 依次跑 采集 → 解析 → reactions（--no-store）→ expectations → 简报推送
+- 5.5 免责声明与合规文案 ✅：全站页脚统一免责声明 + 数据源署名（含 DefiLlama）；仓位页「建议名义敞口」→「参考名义敞口」
 
 **验收**
 
 - [x] 公网可访问；Lighthouse 移动端 ≥ 90（perf 100 / a11y 100 / SEO 100）
 - [ ] sitemap 已生成并上线，待提交 Google/Bing；主要页面被索引
-- [ ] Telegram 频道每日自动推送，内容含样本量 N 与口径版本
+- [ ] Telegram 频道每日自动推送（代码就绪，待凭据上线；内容含样本量 N 与口径版本）
 - [ ] Cron 连续 7 天无人工干预
 
 **依赖**：Cloudflare API Token + Account ID（用户）

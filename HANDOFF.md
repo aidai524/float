@@ -97,7 +97,7 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | P7.1 | ✅ | 仓位计算器 `/position`（用历史回撤分布 / 隐含波动定仓位） |
 | P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `bb1f5d4a` |
 | **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |
-| P5.4 部分 | ✅ | 每日刷新 `pnpm daily`；VPS cron 安装脚本 |
+| P5.4 | ✅ | 每日刷新 `pnpm daily`（采集 → 解析 → reactions → expectations → 简报）；VPS cron 安装脚本 |
 
 **迁移**：`supabase/migrations/0001…0016`（`0013`=DefiLlama 源+`resolve_source_events()`，`0014`=解锁统计 v1，`0015`=expectation/placebo/净效应 + 解锁 v2，`0016`=上币特征化预期）
 
@@ -171,8 +171,9 @@ dvol_points       83,168
 
 ### P2 — 上线与分发（Phase 5）
 - ~~5.2 SEO + 性能~~ ✅：sitemap-index 已上线（3,561 URL）、首页 324KB、Lighthouse perf/a11y/SEO 100/100/100；**剩：把 sitemap 提交到 Google/Bing（需你的账号）**
-- 5.3 公开 Telegram 频道：每日简报（未来 24h 解锁 + 同类基准，含 N 与口径版本）——**下一步**
-- 5.5 全站合规文案（无投资建议）
+- ~~5.3 Telegram 简报~~ ✅ 代码（`pnpm digest`，dry-run 已验证）；**待你的 bot token + 频道 ID**（VPS .env）
+- ~~5.4 daily 管线~~ ✅ 已并入 reactions + expectations
+- ~~5.5 合规文案~~ ✅（页脚统一免责声明 + 数据源署名）
 
 ### P3 — 供给侧加深（Phase 6）
 - **linear 解锁**：目前没导（`noOfTokens` 是「每周速率」不是额度，硬算会虚高）。需要单独的速率表达。

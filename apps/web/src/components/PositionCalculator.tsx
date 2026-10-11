@@ -145,7 +145,7 @@ export default function PositionCalculator({ cohorts, defaultEntry = 0 }: Props)
               <span className={`${val} text-amber-400`}>{pct(stopDistance)}</span>
             </div>
             <div className={row}>
-              <span className={label}>建议名义敞口</span>
+              <span className={label}>参考名义敞口（按所选分位）</span>
               <span className={val}>{out ? `$${usd(out.notional)}` : "—"}</span>
             </div>
             <div className={row}>

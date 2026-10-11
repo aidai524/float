@@ -105,6 +105,18 @@ scripts/install-unlocks-cron.sh status
 | DefiLlama 解锁快照 | VPS 浏览器（周期） | 仅浏览器能过质询 |
 | Supabase | 云端 | 唯一数据源 |
 
+## 8. Telegram 简报（可选）
+
+`pnpm daily` 现在会依次：补算反应 → 市场调整/净效应 → 推送简报（未配置凭据则自动跳过）。
+在 VPS 的 `.env` 加：
+
+```bash
+TELEGRAM_BOT_TOKEN=123456:ABC...   # @BotFather 建 bot
+TELEGRAM_CHAT_ID=@your_channel     # 频道 / 群组，bot 需是管理员
+```
+
+验证：`pnpm digest --dry-run`（只打印）→ `pnpm digest --force`（真发）。
+
 ## 常见坑
 
 - **Binance 451** → VPS 区域在美国，换区。
