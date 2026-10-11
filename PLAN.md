@@ -512,7 +512,7 @@ interface DataSource {
 
 **验收**
 
-- [x] 公网可访问；Lighthouse 移动端 ≥ 90（perf 99 / SEO 100）
+- [x] 公网可访问；Lighthouse 移动端 ≥ 90（perf 100 / a11y 100 / SEO 100）
 - [ ] sitemap 已生成并上线，待提交 Google/Bing；主要页面被索引
 - [ ] Telegram 频道每日自动推送，内容含样本量 N 与口径版本
 - [ ] Cron 连续 7 天无人工干预
