@@ -12,12 +12,14 @@
  * 设计为可反复执行（幂等）：重复跑不会产生重复数据。
  */
 import { createClient } from "@supabase/supabase-js";
+import { execFileSync } from "node:child_process";
 import {
   runSource,
   resolveEvents,
   type DataSourceRow,
   type DB,
 } from "../packages/data-layer/src/index";
+import { maybeSendDigest } from "./lib/digest";
 
 // 允许直接 `pnpm daily` / launchd 裸跑：环境变量未注入时，从仓库根的 .env 读取。
 // 显式注入的进程环境优先（loadEnvFile 只在缺失时调用）。
@@ -45,6 +47,18 @@ const secrets = {
   CRYPTOPANIC_API_KEY: process.env.CRYPTOPANIC_API_KEY ?? "",
   FRED_API_KEY: process.env.FRED_API_KEY ?? "",
 };
+
+/** 子脚本（reactions / expectations）：失败不阻断当天流程 */
+function runScript(script: string, args: string[] = []) {
+  try {
+    execFileSync("npx", ["--yes", "tsx", script, ...args], {
+      stdio: "inherit",
+      env: process.env,
+    });
+  } catch (err) {
+    console.error(`  ✗ ${script} 失败：${(err as Error).message}`);
+  }
+}
 
 async function refreshSource(id: string) {
   const { data } = await raw.from("data_sources").select("*").eq("id", id).maybeSingle();
@@ -132,10 +146,20 @@ async function main() {
   const resolved = await resolveEvents(db, { limit: 20000 });
   console.log(`  ${JSON.stringify(resolved)}`);
 
-  console.log("3) 生成简报");
+  console.log("3) 补算反应（新事件的 1m/1h 数据，不落 K 线）");
+  runScript("scripts/compute-reactions.ts", ["--no-store"]);
+
+  console.log("4) 市场调整 / placebo 净效应");
+  runScript("scripts/compute-expectations.ts");
+
+  console.log("5) 生成简报");
   await brief();
 
-  console.log("\n✓ 完成。补算反应请跑：pnpm reactions --no-store\n");
+  console.log("6) 推送 Telegram 简报");
+  const digest = await maybeSendDigest(raw, {});
+  console.log(`  ${digest.sent ? "✓ 已发送" : `未发送：${digest.reason}`}`);
+
+  console.log("\n✓ 完成\n");
 }
 
 main().catch((e) => {
