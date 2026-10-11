@@ -1,7 +1,7 @@
 # HANDOFF —— Float（加密事件研究引擎）
 
 > 换电脑继续开发用。**先读这一份**，再读 `PLAN.md`（阶段计划）/ `TODO.md`（待办）/ `POSITIONING.md`（定位）。
-> 最后更新：2026-10-08 · 45 commits · `main` 与 `origin/main` 同步
+> 最后更新：2026-10-11 · 49 commits · `main` 与 `origin/main` 同步（线上已部署 `5e63ea35`）
 
 ---
 
@@ -157,10 +157,11 @@ dvol_points       83,168
 
 ## 6. 下一步（按优先级）
 
-### P0 — 收尾当前工作（在**部署/运行机**上做，不是开发机）
-1. **重新部署站点**：`pnpm deploy`（= build web + deploy worker）。线上 `/unlocks` 现在 **404**，因为站点是 SSG，上次构建（在 `unlocks.astro` 之前）没有这个页。**任何代码或数据变化都需要重新构建+部署才上线**。
+### P0 — 收尾当前工作
+1. ~~重新部署站点~~ ✅ **已完成（2026-10-11，版本 `5e63ea35`）**：`/unlocks`、`/listings`、历史事件详情页均已上线（`float.aidai524.workers.dev`）。站点是 SSG，**以后任何代码/数据变化仍需重新构建 + 部署**。
+   - 部署方式：本机 `mise exec -- pnpm --filter @cee/web build` → 取消 `CLOUDFLARE_API_TOKEN`（.env 里那个已失效）→ OAuth 会话 `pnpm --filter @cee/worker run deploy`
 2. **确认 VPS 两个 cron**：`scripts/install-daily-cron.sh status` + `crontab -l`（应有 `float-daily` 和 `float-unlocks`）。
-3. 确认工作区干净、已推送（当前 `048d15a` 是干净的）。
+3. 确认工作区干净、已推送。
 
 ### P1 — Phase 4 全部完成 ✅（4.1 / 4.2–4.3 v2 / 4.4）
 - 解锁方向性信号已证伪（placebo 净效应 t=−0.36）；上币信号强且可用（现货新币 24h −10.2%，RWA 除外）
