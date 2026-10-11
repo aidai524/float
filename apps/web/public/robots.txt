@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://float.aidai524.workers.dev/sitemap-index.xml

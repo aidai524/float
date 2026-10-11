@@ -329,3 +329,32 @@ export interface ListingBaselineV1 {
   pct_4h: number | null;
   pct_24h: number | null;
 }
+
+// ---------- 首页/列表页的瘦身行类型（不进 island props 的字段一律不取） ----------
+
+/** 事件表格行（只含表格用到的列，避免 React island props 膨胀） */
+export interface EventTableRow {
+  id: number;
+  t0: string;
+  token_symbol: string;
+  asset_class: AssetClass;
+  event_type: string;
+  magnitude_usd: number | null;
+  title: string | null;
+  source_url: string | null;
+  ret_5m: number | null;
+  ret_15m: number | null;
+  ret_1h: number | null;
+  ret_4h: number | null;
+  ret_24h: number | null;
+  vol_ratio: number | null;
+  liquidity_ok: boolean | null;
+  base_after_t0: boolean | null;
+}
+
+/** 首页惊讶度表（只取计算所需字段） */
+export interface SurpriseRow {
+  event_type: string;
+  surprise_24h: number | null;
+  implied_move_24h: number | null;
+}

@@ -7,7 +7,7 @@ import {
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import type { EventV1 } from "../lib/types";
+import type { EventTableRow } from "../lib/types";
 import {
   ASSET_COLOR,
   eventTypeLabel,
@@ -19,13 +19,13 @@ import {
   pctClass,
 } from "../lib/format";
 
-const col = createColumnHelper<EventV1>();
+const col = createColumnHelper<EventTableRow>();
 
 const pctCell = (v: number | null) => (
   <span className={`mono text-[12px] ${pctClass(v)}`}>{pct(v)}</span>
 );
 
-export default function EventTable({ events }: { events: EventV1[] }) {
+export default function EventTable({ events }: { events: EventTableRow[] }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: "t0", desc: true }]);
   const [type, setType] = useState("");
   const [asset, setAsset] = useState("");

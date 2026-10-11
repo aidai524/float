@@ -1,0 +1,28 @@
+---
+import Layout from "../layouts/Layout.astro";
+import EventTable from "../components/EventTable";
+import { listEventTableRows } from "../lib/db";
+
+const rows = await listEventTableRows(300);
+---
+
+<Layout title="全部事件" subtitle="事件与实测反应全量列表">
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">全部事件</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+   最近 {rows.length} 条事件（按 T0 倒序，共 2.4 万条在库），可在表内按类型 / 资产类别 /
+    关键词筛选、按列排序。单个事件点标题进入详情页，看同类分位、市场调整与预期对比。
+  </p>
+
+  <section class="mb-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <EventTable events={rows} client:load />
+  </section>
+
+  <section
+    class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4 text-[12px] text-[var(--color-mut)]"
+  >
+    <p class="m-0">
+      反应口径 v1：基准价 = T0 前最近一根 1m 收盘（无则取 T0 后首根并标注 <code>*</code>）·
+      流动性三态（达标 / 低 / 未知）· 所有统计带样本量 N 与口径版本。历史数据不代表未来，非投资建议。
+    </p>
+  </section>
+</Layout>

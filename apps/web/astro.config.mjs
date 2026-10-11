@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
+import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -20,7 +21,8 @@ if (existsSync(envPath)) {
 
 // 静态站点（SSG）：构建时从 Supabase 拉数据，产物可直接部署 Cloudflare。
 export default defineConfig({
-  integrations: [react()],
+  site: "https://float.aidai524.workers.dev",
+  integrations: [react(), sitemap({ filter: (page) => !page.includes("/api/") })],
   vite: {
     plugins: [tailwindcss()],
   },

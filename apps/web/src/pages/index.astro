@@ -3,12 +3,15 @@ import Layout from "../layouts/Layout.astro";
 import EventTable from "../components/EventTable";
 import BaselinePanel from "../components/BaselinePanel.astro";
 import CategoryPanel from "../components/CategoryPanel.astro";
-import { listCategoryStats, listEvents, listTypeStats } from "../lib/db";
+import { listCategoryStats, listEvents, listEventTableRows, listSurpriseEvents, listTypeStats, getSiteCounts } from "../lib/db";
 import { eventTypeLabel, fmtTs, fmtUsd, pct } from "../lib/format";
 
 const events = await listEvents(1000);
 const stats = await listTypeStats(5);
 const catStats = await listCategoryStats("listing_cex", 10);
+const recentRows = await listEventTableRows(100);
+const surpriseEvents = await listSurpriseEvents();
+const counts = await getSiteCounts();
 
 const now = Date.now();
 
@@ -97,12 +100,10 @@ const otherUp = upcomingAll.filter(
 
 // 兼容旧变量名
 
-const measured = events.filter((e) => e.ret_1h != null).length;
-
 // ---- 预期 vs 实际（惊讶度）----
 const surpriseStats = (() => {
   const byType = new Map<string, { s: number[]; imp: number[] }>();
-  for (const e of events) {
+  for (const e of surpriseEvents) {
     const rec = byType.get(e.event_type) ?? { s: [], imp: [] };
     if (e.surprise_24h != null) rec.s.push(e.surprise_24h);
     if (e.implied_move_24h != null) rec.imp.push(e.implied_move_24h);
@@ -134,13 +135,13 @@ const maxN = stats.reduce((a, s) => Math.max(a, s.n), 0);
 const generatedAt = new Date().toISOString().replace("T", " ").slice(0, 19);
 
 const cards = [
-  { label: "事件总数", value: String(events.length) },
-  { label: "已测量反应", value: String(measured) },
+  { label: "事件总数", value: String(counts.events) },
+  { label: "已测量反应", value: String(counts.measured) },
   { label: `未来 ${horizonDays} 天`, value: String(events.filter((e) => {
     const t = new Date(e.t0).getTime();
     return t > now && t < now + horizonDays * 86400000;
   }).length) },
-  { label: "已分类代币", value: String(catStats.reduce((a, s) => a + s.n, 0)) },
+  { label: "已分类代币", value: String(counts.categorizedTokens) },
   { label: "最大样本 N", value: String(maxN) },
 ];
 
@@ -349,7 +350,10 @@ const daysUntil = (t: string) => {
   </section>
 
   <section class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
-    <h2 class="m-0 mb-3 text-[13px] font-semibold">全部事件（{events.length} 条）</h2>
-    <EventTable events={events} client:load />
+    <div class="mb-3 flex items-baseline justify-between gap-3 flex-wrap">
+      <h2 class="m-0 text-[13px] font-semibold">最近事件（{recentRows.length} 条）</h2>
+      <a href="/events" class="text-[12px] no-underline">查看全部事件 →</a>
+    </div>
+    <EventTable events={recentRows} client:load />
   </section>
 </Layout>

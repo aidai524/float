@@ -7,12 +7,14 @@ import type {
   Candle,
   CategoryStatsV1,
   EventExpectationV1,
+  EventTableRow,
   EventTypeStatsV1,
   EventV1,
   ListingBaselineV1,
   ListingCategoryStat,
   ListingFdvStat,
   ListingFormStat,
+  SurpriseRow,
   TokenV1,
   UnlockCategoryStat,
   UnlockCategoryStatV2,
@@ -60,6 +62,55 @@ export async function listEvents(limit = 1000): Promise<EventV1[]> {
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as EventV1[];
+}
+
+/**
+ * 事件表格行（瘦身）：只取表格用到的列。
+ * 之前取全字段（含 source_detail jsonb）会被序列化进 React island props，首页 HTML 4.3MB。
+ */
+export async function listEventTableRows(limit = 1000): Promise<EventTableRow[]> {
+  const { data, error } = await api
+    .from("events_v1")
+    .select(
+      "id,t0,token_symbol,asset_class,event_type,magnitude_usd,title,source_url," +
+        "ret_5m,ret_15m,ret_1h,ret_4h,ret_24h,vol_ratio,liquidity_ok,base_after_t0",
+    )
+    .order("t0", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as EventTableRow[];
+}
+
+/** 所有有 DVOL 惊讶度的事件（宏观）；用于首页「预期 vs 实际」表 */
+export async function listSurpriseEvents(limit = 1000): Promise<SurpriseRow[]> {
+  const { data, error } = await api
+    .from("events_v1")
+    .select("event_type,surprise_24h,implied_move_24h")
+    .not("surprise_24h", "is", null)
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as SurpriseRow[];
+}
+
+/** 首页计数卡：事件总数 / 已测量反应 / 已分类代币 */
+export async function getSiteCounts(): Promise<{
+  events: number;
+  measured: number;
+  categorizedTokens: number;
+}> {
+  const [total, measured, tokens] = await Promise.all([
+    api.from("events_v1").select("id", { count: "exact", head: true }),
+    api.from("events_v1").select("id", { count: "exact", head: true }).not("base_ts", "is", null),
+    api.from("tokens_v1").select("id", { count: "exact", head: true }).not("category", "is", null),
+  ]);
+  if (total.error) throw total.error;
+  if (measured.error) throw measured.error;
+  if (tokens.error) throw tokens.error;
+  return {
+    events: total.count ?? 0,
+    measured: measured.count ?? 0,
+    categorizedTokens: tokens.count ?? 0,
+  };
 }
 
 export async function getEvent(id: number): Promise<EventV1 | null> {

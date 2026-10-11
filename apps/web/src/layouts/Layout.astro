@@ -5,32 +5,42 @@ interface Props {
   title?: string;
   subtitle?: string;
 }
-const { title = "MoonEvent", subtitle } = Astro.props;
+const { title = "Float", subtitle } = Astro.props;
 const nav = [
   { href: "/", label: "总览" },
   { href: "/calendar", label: "事件日历" },
+  { href: "/events", label: "全部事件" },
   { href: "/tokens", label: "代币" },
   { href: "/unlocks", label: "解锁反应" },
   { href: "/listings", label: "上币反应" },
   { href: "/position", label: "仓位计算器" },
 ];
 const path = Astro.url.pathname;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://float.aidai524.workers.dev").href;
 ---
 <!doctype html>
 <html lang="zh">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title === "MoonEvent" ? "MoonEvent · 加密事件研究引擎" : `${title} · MoonEvent`}</title>
+    <title>{title === "Float" ? "Float · 加密事件研究引擎" : `${title} · Float`}</title>
     <meta
       name="description"
+      content="加密事件研究引擎：事件发生后的 5m / 15m / 1h / 4h / 24h 实际反应，基于历史市场数据。"
+    />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title === "Float" ? "Float · 加密事件研究引擎" : `${title} · Float`} />
+    <meta property="og:url" content={canonical} />
+    <meta
+      property="og:description"
       content="加密事件研究引擎：事件发生后的 5m / 15m / 1h / 4h / 24h 实际反应，基于历史市场数据。"
     />
   </head>
   <body class="min-h-screen bg-[var(--color-bg)] text-[var(--color-fg)]">
     <header class="border-b border-[var(--color-line)] px-6 py-3 flex items-baseline gap-6 flex-wrap">
       <a href="/" class="text-[15px] font-semibold no-underline text-[var(--color-fg)]">
-        MoonEvent <span class="text-[var(--color-mut)] font-normal">事件研究引擎</span>
+        Float <span class="text-[var(--color-mut)] font-normal">事件研究引擎</span>
       </a>
       <nav class="flex gap-4 text-[13px]">
         {
