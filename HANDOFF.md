@@ -95,8 +95,8 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | P4.2/4.3 | ✅ 代码+DB | 解锁稀释斜率 + 接收方分类（`api.unlock_*_v1`）；前端 `/unlocks` 页 |
 | P6.1 部分 | ✅ | DefiLlama 解锁历史回填（21,506 cliff，含接收方类别/分配名） |
 | P7.1 | ✅ | 仓位计算器 `/position`（用历史回撤分布 / 隐含波动定仓位） |
-| P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `ef926470` |
-| **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf 99/SEO 100；待提交 Search Console |
+| P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `bb1f5d4a` |
+| **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |
 | P5.4 部分 | ✅ | 每日刷新 `pnpm daily`；VPS cron 安装脚本 |
 
 **迁移**：`supabase/migrations/0001…0016`（`0013`=DefiLlama 源+`resolve_source_events()`，`0014`=解锁统计 v1，`0015`=expectation/placebo/净效应 + 解锁 v2，`0016`=上币特征化预期）
@@ -170,7 +170,7 @@ dvol_points       83,168
 - 可继续深化的点：FDV 覆盖（CoinGecko 免费档只给 365 天历史；可改用「上币时价格 × 当前 max/total supply」或付费源）、Bybit/OKX 公告源补交易所层级
 
 ### P2 — 上线与分发（Phase 5）
-- ~~5.2 SEO + 性能~~ ✅：sitemap-index 已上线（3,561 URL）、首页 324KB、Lighthouse perf 99/SEO 100；**剩：把 sitemap 提交到 Google/Bing（需你的账号）**
+- ~~5.2 SEO + 性能~~ ✅：sitemap-index 已上线（3,561 URL）、首页 324KB、Lighthouse perf/a11y/SEO 100/100/100；**剩：把 sitemap 提交到 Google/Bing（需你的账号）**
 - 5.3 公开 Telegram 频道：每日简报（未来 24h 解锁 + 同类基准，含 N 与口径版本）——**下一步**
 - 5.5 全站合规文案（无投资建议）
 

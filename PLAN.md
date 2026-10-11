@@ -504,7 +504,7 @@ interface DataSource {
   - sitemap-index（3,561 URL）+ robots.txt + canonical/og；品牌名修正 MoonEvent → Float
   - 事件表瘦身（EventTableRow）+ 首页只渲染最近 100 条 + 新增 `/events` 页
   - **首页 HTML 4.36MB → 324KB**；修复首页「预期 vs 实际」表为空（宏观事件不在最新 1000 条）与计数卡
-  - Lighthouse 移动端：**performance 99 · SEO 100 · accessibility 89→（补 aria-label）· best-practices 96**；FCP 1.4s / LCP 1.6s
+  - Lighthouse 移动端：**performance 100 · accessibility 100 · SEO 100 · best-practices 96**；LCP 1.1s
   - 剩余：把 sitemap 提交 Google Search Console / Bing（需你的账号）；LCP 1.6s 含本机代理延迟
 - 5.3 **公开 Telegram 频道**：每日自动简报（未来 24h 事件 + 同类基准），**无需账号系统**
 - 5.4 **Cron 定时任务**：解锁轮询、反应重算、简报推送（替代人工跑脚本）
