@@ -95,7 +95,7 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | P4.2/4.3 | ✅ 代码+DB | 解锁稀释斜率 + 接收方分类（`api.unlock_*_v1`）；前端 `/unlocks` 页 |
 | P6.1 部分 | ✅ | DefiLlama 解锁历史回填（21,506 cliff，含接收方类别/分配名） |
 | P7.1 | ✅ | 仓位计算器 `/position`（用历史回撤分布 / 隐含波动定仓位） |
-| P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `bb1f5d4a` |
+| P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `bf347d3c` |
 | **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |
 | P5.4 | ✅ | 每日刷新 `pnpm daily`（采集 → 解析 → reactions → expectations → 简报）；VPS cron 安装脚本 |
 
