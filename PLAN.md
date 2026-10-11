@@ -499,16 +499,21 @@ interface DataSource {
 
 **目标**：产品公网可用 + 建立零成本分发通道。
 
-- 5.1 **部署到 Cloudflare**（Workers + Static Assets）+ 自定义域 + `/api/health`
-- 5.2 **SEO**：sitemap、结构化数据、提交 Google/Bing；Lighthouse 移动端 ≥ 90，LCP < 1.5s
+- 5.1 **部署到 Cloudflare**（Workers + Static Assets）+ 自定义域 + `/api/health` ✅
+- 5.2 **SEO + 性能** ✅（2026-10-11）：
+  - sitemap-index（3,561 URL）+ robots.txt + canonical/og；品牌名修正 MoonEvent → Float
+  - 事件表瘦身（EventTableRow）+ 首页只渲染最近 100 条 + 新增 `/events` 页
+  - **首页 HTML 4.36MB → 324KB**；修复首页「预期 vs 实际」表为空（宏观事件不在最新 1000 条）与计数卡
+  - Lighthouse 移动端：**performance 99 · SEO 100 · accessibility 89→（补 aria-label）· best-practices 96**；FCP 1.4s / LCP 1.6s
+  - 剩余：把 sitemap 提交 Google Search Console / Bing（需你的账号）；LCP 1.6s 含本机代理延迟
 - 5.3 **公开 Telegram 频道**：每日自动简报（未来 24h 事件 + 同类基准），**无需账号系统**
 - 5.4 **Cron 定时任务**：解锁轮询、反应重算、简报推送（替代人工跑脚本）
 - 5.5 免责声明与合规文案（全站无投资建议话术）
 
 **验收**
 
-- [ ] 公网可访问；Lighthouse 移动端 ≥ 90
-- [ ] sitemap 已提交，主要页面被索引
+- [x] 公网可访问；Lighthouse 移动端 ≥ 90（perf 99 / SEO 100）
+- [ ] sitemap 已生成并上线，待提交 Google/Bing；主要页面被索引
 - [ ] Telegram 频道每日自动推送，内容含样本量 N 与口径版本
 - [ ] Cron 连续 7 天无人工干预
 

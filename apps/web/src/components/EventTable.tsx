@@ -183,6 +183,7 @@ export default function EventTable({ events }: { events: EventTableRow[] }) {
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
+          aria-label="按事件类型筛选"
           className="rounded border border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1"
         >
           <option value="">全部类型</option>
@@ -195,6 +196,7 @@ export default function EventTable({ events }: { events: EventTableRow[] }) {
         <select
           value={asset}
           onChange={(e) => setAsset(e.target.value)}
+          aria-label="按资产类别筛选"
           className="rounded border border-[var(--color-line)] bg-[var(--color-panel)] px-2 py-1"
         >
           <option value="">全部资产类别</option>
