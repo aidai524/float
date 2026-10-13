@@ -49,6 +49,7 @@ cp .env.example .env          # 填入密钥（TypeSafe、Bark 等）
 | `pnpm deploy` | 构建 web + 部署 Cloudflare Worker |
 | `pnpm digest` | Telegram 每日简报（`--dry-run` / `--force`）|
 | `pnpm expectations` | 市场调整 + placebo 净效应（解锁 v2）|
+| `pnpm meta` | CoinGecko 代币元数据回填（市值 / 最大供应 / 总供应）|
 | `pnpm --filter @cee/mcp test` | MCP Server 冒烟测试 |
 | `pnpm ingest [source]` | 真实采集写入 Supabase（可选指定源） |
 | `pnpm enrich [limit]` | Jev 富化：事件类型 + 资产类别（crypto/rwa） |

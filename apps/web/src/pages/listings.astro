@@ -98,8 +98,8 @@ const headline = forms.find((f) => f.listing_form === "new_listing") ?? forms[0]
   <section class="mb-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
     <div class="mb-2 font-semibold">按 FDV 档（覆盖受限）</div>
     <p class="mb-2 mt-0 text-[11px] text-[var(--color-mut)]">
-      FDV ≈ 上币时基准价 × 最大供应；最大供应仅能从 DefiLlama
-      解锁数据推导（覆盖约 1/3 标的）。缺口不猜测，单列 unknown。
+      FDV ≈ 上币时基准价 × 供应量（优先 DefiLlama 快照最大供应，其次 CoinGecko 最大/总供应；
+      当前覆盖 94%）。用当前供应近似上币时供应，只用于粗粒度规模分档；缺口不猜测，单列 unknown。
     </p>
     <ListingStatsTable rows={fdvRows} labelHeader="FDV" />
     {fdvUnknown && (

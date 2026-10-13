@@ -33,7 +33,8 @@
     "unlocks:import": "tsx scripts/backfill-unlocks.ts",
     "unlocks:snapshot": "node scripts/fetch-defillama-browser.mjs",
     "worker:dev": "pnpm --filter @cee/worker run dev",
-    "deploy": "pnpm --filter @cee/web build && pnpm --filter @cee/worker run deploy"
+    "deploy": "pnpm --filter @cee/web build && pnpm --filter @cee/worker run deploy",
+    "meta": "tsx scripts/backfill-token-meta.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

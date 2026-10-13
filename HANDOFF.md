@@ -99,6 +99,7 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | **P5.6** | ✅ | 站点自动重建部署：GitHub Actions `deploy.yml` 每天 04:30 UTC 构建 + 部署（数据不再脱节）|
 | **P10 v0** | ✅ | 公开只读 API `/api/v1/*`（边缘缓存 5 分钟）+ MCP Server（`packages/mcp`，6 个工具）|
 | **P8 v1** | ✅ | 账号（Supabase 魔法链接）+ Watchlist + Telegram 告警（T-7/3/1 + 事后，`alert_log` 去重）；迁移 `0017` |
+| **P6.5** | ✅ | CoinGecko 元数据（`pnpm meta`，373 个代币）；上币 FDV 覆盖 34% → **94.5%**（供应 = DefiLlama → CG max/total 兑底）|
 | **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |
 | P5.4 | ✅ | 每日刷新 `pnpm daily`（采集 → 解析 → reactions → expectations → 简报）；VPS cron 安装脚本 |
 
@@ -180,9 +181,10 @@ dvol_points       83,168
 - ~~5.6 站点自动重建~~ ✅ GitHub Actions `.github/workflows/deploy.yml`（每天 04:30 UTC）；仓库 Secrets：`SUPABASE_URL` / `SUPABASE_ANON_KEY` / `CLOUDFLARE_ACCOUNT_ID` / **`CLOUDFLARE_API_TOKEN`（待补，旧 token 已失效）**
 
 ### P3 — 供给侧加深（Phase 6）
-- **linear 解锁**：目前没导（`noOfTokens` 是「每周速率」不是额度，硬算会虚高）。需要单独的速率表达。
-- Bybit 价格回退（补齐无 Binance 交易对的标的）
-- CoinGecko 元数据（市值/流通/板块）→ 上币预期输入
+- ~~CoinGecko 元数据~~ ✅（`pnpm meta`；FDV 覆盖 94.5%）
+- **Bybit 价格回退**：已探明 ROI 低（30 天内待算的 300 个符号里 Bybit 现货只覆盖 35 个）→ 暂缓
+- **linear 解锁**：仍待做（`noOfTokens` 是每周速率不是额度，需要单独的速率表达）
+- 销毁 / 回购 / 增发：无现成源，待调研
 - DefiLlama Pro CSV（可选，若能解封更干净的历史）
 
 ### 明确不做
