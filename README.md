@@ -107,7 +107,7 @@ pnpm --filter @cee/web build    # 静态构建（构建时从 Supabase 拉数据
 pnpm --filter @cee/web preview  # 预览构建产物
 ```
 
-页面：`/` 总览 · `/calendar` 事件日历 · `/events` 全部事件 · `/event/[id]` 事件详情 · `/tokens` 代币列表 · `/token/[symbol]` 代币详情 · `/unlocks` 解锁反应 · `/listings` 上币反应 · `/position` 仓位参考
+页面：`/` 总览 · `/calendar` 事件日历 · `/events` 全部事件 · `/event/[id]` 事件详情 · `/tokens` 代币列表 · `/token/[symbol]` 代币详情 · `/unlocks` 解锁反应 · `/listings` 上币反应 · `/heatmap` 热力图 · `/position` 仓位参考 · `/account` 账号 · `/docs` API 文档
 
 站点每天 04:30 UTC 由 GitHub Actions 自动重建部署（`.github/workflows/deploy.yml`），让 SSG 数据与 Supabase 保持同步。
 
@@ -121,11 +121,13 @@ BASE=https://float.aidai524.workers.dev
 curl "$BASE/api/v1/"                      # 端点索引
 curl "$BASE/api/v1/events?event_type=unlock*&has_reaction=1&limit=20"
 curl "$BASE/api/v1/events/188"            # 单事件（含溯源与市场调整）
+curl "$BASE/api/v1/events/188/similar?k=5" # 最像的历史事件（pgvector KNN）
 curl "$BASE/api/v1/calendar?days=14"      # 未来 14 天解锁/上币/宏观
 curl "$BASE/api/v1/stats/event-types?min_n=20"
 curl "$BASE/api/v1/stats/unlocks"         # float 分桶 / 接收方 / 净效应
 curl "$BASE/api/v1/stats/listings"        # 上币形式/类别/FDV
 curl "$BASE/api/v1/openapi.json"
+curl -O "$BASE/api/v1/export/listing_cohort_v1.csv"  # 数据集导出（R2）
 ```
 
 **API key（可选）**：匿名可用；带 key 的请求会按 key 计量（Workers Analytics Engine）：
