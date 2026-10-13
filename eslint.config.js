@@ -26,6 +26,7 @@ export default tseslint.config(
         __dirname: "readonly",
         // 无头浏览器脚本在 page.evaluate 回调里使用浏览器全局
         document: "readonly",
+        fetch: "readonly",
       },
     },
   },

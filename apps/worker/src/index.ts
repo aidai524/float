@@ -4,6 +4,8 @@
  * 路由：/api/* 由本 Worker 处理，其余由静态资源（ASSETS）直接返回。
  * 数据源解析（解锁/公告）后续迁移到此处的 scheduled()。
  */
+import { handleApi } from "./api";
+
 export interface Env {
   ASSETS: Fetcher;
   // Secrets / vars（部署后用 `wrangler secret put` 或 vars 注入）
@@ -170,6 +172,10 @@ async function diagDb(env: Env, runResolve: boolean): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // 公开只读 API v1（/api/v1/*）：边缘缓存 + 契约视图
+    const apiRes = await handleApi(request, env, url);
+    if (apiRes) return apiRes;
 
     if (url.pathname === "/api/health") {
       return json({ ok: true, service: "float", version: VERSION, time: new Date().toISOString() });

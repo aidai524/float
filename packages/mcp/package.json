@@ -1,0 +1,18 @@
+{
+  "name": "@cee/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Float MCP Server —— 让 AI 客户端直接查询加密事件反应数据",
+  "bin": {
+    "float-mcp": "./bin/float-mcp.mjs"
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "undici": "^8.11.2",
+    "zod": "^4.6.6"
+  }
+}

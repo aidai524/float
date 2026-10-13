@@ -46,6 +46,10 @@ cp .env.example .env          # 填入密钥（TypeSafe、Bark 等）
 | `pnpm test` | 单元测试 + 契约测试 |
 | `pnpm lint` | ESLint |
 | `pnpm format` / `format:check` | Prettier |
+| `pnpm deploy` | 构建 web + 部署 Cloudflare Worker |
+| `pnpm digest` | Telegram 每日简报（`--dry-run` / `--force`）|
+| `pnpm expectations` | 市场调整 + placebo 净效应（解锁 v2）|
+| `pnpm --filter @cee/mcp test` | MCP Server 冒烟测试 |
 | `pnpm ingest [source]` | 真实采集写入 Supabase（可选指定源） |
 | `pnpm enrich [limit]` | Jev 富化：事件类型 + 资产类别（crypto/rwa） |
 | `pnpm preview` | 生成静态预览页 `preview/index.html` |
@@ -100,10 +104,48 @@ pnpm --filter @cee/web build    # 静态构建（构建时从 Supabase 拉数据
 pnpm --filter @cee/web preview  # 预览构建产物
 ```
 
-页面：`/` 总览 · `/calendar` 事件日历 · `/event/[id]` 事件详情 · `/tokens` 代币列表 · `/token/[symbol]` 代币详情
+页面：`/` 总览 · `/calendar` 事件日历 · `/events` 全部事件 · `/event/[id]` 事件详情 · `/tokens` 代币列表 · `/token/[symbol]` 代币详情 · `/unlocks` 解锁反应 · `/listings` 上币反应 · `/position` 仓位参考
 
-> 通用化设计：事件详情按 `event_type` 渲染字段，只依赖契约字段（含尚未使用的 `magnitude_usd` / `magnitude_pct`）。
-> 后续接入解锁事件时，前端无需改动。
+站点每天 04:30 UTC 由 GitHub Actions 自动重建部署（`.github/workflows/deploy.yml`），让 SSG 数据与 Supabase 保持同步。
+
+## 公开 API（只读）
+
+无需 key，边缘缓存 5 分钟，全部读 `api.*` 契约视图：
+
+```bash
+BASE=https://float.aidai524.workers.dev
+
+curl "$BASE/api/v1/"                      # 端点索引
+curl "$BASE/api/v1/events?event_type=unlock*&has_reaction=1&limit=20"
+curl "$BASE/api/v1/events/188"            # 单事件（含溯源与市场调整）
+curl "$BASE/api/v1/calendar?days=14"      # 未来 14 天解锁/上币/宏观
+curl "$BASE/api/v1/stats/event-types?min_n=20"
+curl "$BASE/api/v1/stats/unlocks"         # float 分桶 / 接收方 / 净效应
+curl "$BASE/api/v1/stats/listings"        # 上币形式/类别/FDV
+curl "$BASE/api/v1/openapi.json"
+```
+
+## MCP Server（给 AI 客户端）
+
+`packages/mcp` 是一个 stdio MCP Server，把公开 API 包成 6 个工具：
+`search_events` · `get_event` · `get_calendar` · `get_event_type_stats` · `get_unlock_stats` · `get_listing_stats`。
+
+Claude Desktop / Cursor 配置：
+
+```json
+{
+  "mcpServers": {
+    "float": {
+      "command": "node",
+      "args": ["/绝对路径/float/packages/mcp/bin/float-mcp.mjs"]
+    }
+  }
+}
+```
+
+- 可用 `FLOAT_API_BASE` 指向其他环境
+- 检测到 `HTTPS_PROXY` 时会自动走代理（依赖已装的 undici）
+- 冒烟测试：`pnpm --filter @cee/mcp test`
 
 ## 不可破的规则
 
