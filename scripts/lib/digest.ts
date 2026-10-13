@@ -229,7 +229,7 @@ export async function buildDigest(raw: SupabaseClient): Promise<string> {
         const b = floatBucket(floatPct(e.source_detail, e.magnitude_pct));
         const stat = b ? floatStats.get(b) : null;
         const tail = !b
-          ? "小额稀释（<0.5%），无同类基准"
+          ? "小额稀释（&lt;0.5%），无同类基准"
           : stat && stat.n_excess >= 20
             ? `同类 ${b} 桶调整中位 ${pct(stat.median_excess_24h)}（N=${stat.n_excess}）`
             : "同类样本不足";
