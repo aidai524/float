@@ -146,8 +146,8 @@ async function main() {
   const resolved = await resolveEvents(db, { limit: 20000 });
   console.log(`  ${JSON.stringify(resolved)}`);
 
-  console.log("3) 补算反应（新事件的 1m/1h 数据，不落 K 线）");
-  runScript("scripts/compute-reactions.ts", ["--no-store"]);
+  console.log("3) 补算反应（最近 30 天的新事件，不落 K 线）");
+  runScript("scripts/compute-reactions.ts", ["--no-store", "--since-days", "30"]);
 
   console.log("4) 市场调整 / placebo 净效应");
   runScript("scripts/compute-expectations.ts");

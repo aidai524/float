@@ -56,6 +56,12 @@ const minPct = (() => {
   return i >= 0 ? Number(process.argv[i + 1]) : null;
 })();
 
+/** 只算最近 N 天的事件（daily 用；不传 = 历史全量，可长达数小时） */
+const sinceDays = (() => {
+  const i = process.argv.indexOf("--since-days");
+  return i >= 0 ? Number(process.argv[i + 1]) : null;
+})();
+
 /** 跳过已算过（当前口径）的事件（默认开启，加快重跑） */
 const skipExisting = !process.argv.includes("--recompute");
 
@@ -174,6 +180,9 @@ async function main() {
     .order("t0", { ascending: true });
   if (typeFilter) q = q.like("event_type", `${typeFilter}%`);
   if (minPct != null && Number.isFinite(minPct)) q = q.gte("magnitude_pct", minPct);
+  if (sinceDays != null && Number.isFinite(sinceDays)) {
+    q = q.gte("t0", new Date(Date.now() - sinceDays * 86400_000).toISOString());
+  }
   const { data: events, error } = await q;
   if (error) throw error;
   const list = (events ?? []).slice(0, argLimit === Infinity ? undefined : argLimit) as EventRow[];
