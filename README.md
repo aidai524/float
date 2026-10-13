@@ -173,11 +173,15 @@ cd packages/mcp && npm publish
 - 检测到 `HTTPS_PROXY` 时会自动走代理（依赖已装的 undici）
 - 冒烟测试：`pnpm --filter @cee/mcp test`
 
-## 账号 / Watchlist / 告警
+## 账号 / Watchlist / 告警 / Pro 订阅
 
 - `/account`：邮箱魔法链接登录（Supabase Auth），维护 Watchlist，配置 Telegram 告警
 - 告警：T-7 / T-3 / T-1 事件 + 同类基准（含 N），事件后 24h 内附实测反应
 - 派发：VPS daily 调用 `pnpm alerts`；`alert_log` 唯一键去重（同一条只发一次）
+- **Pro 订阅（USDC 链上支付）**：把 USDC 转到配置的收款地址 → 在 `/account` 提交 tx hash →
+  Worker 直接查链验证（ERC-20 Transfer / 金额 / 确认数 / tx 唯一性）→ 自动开通 30 天。
+  免费档 Watchlist 5 个，Pro 100 个（数据库触发器强制）。
+  - Worker 配置：`CRYPTO_PAY_TO`（secret）、`CRYPTO_CHAIN`（默认 base）、`PRO_PRICE_USD`（默认 19）、`PRO_PERIOD_DAYS`（默认 30）
 - **一次性配置**：Supabase Dashboard → Authentication → URL Configuration
   - Site URL：`https://float.aidai524.workers.dev`
   - Redirect URLs：`https://float.aidai524.workers.dev/**`、`http://localhost:4321/**`

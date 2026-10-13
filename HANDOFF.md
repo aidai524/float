@@ -102,6 +102,7 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | **P7.2/7.3/7.4** | ✅ | 杠杆/强平（多空+强平距离警告）· 热力图（类型×资产类别 + 60 天密度）· 可比事件 KNN（pgvector + `/events/:id/similar`）|
 | **P10.2/10.5** | ✅ | `/docs` API 文档页 · R2 `float-exports` + `/api/v1/export/:name.csv`（部署流程每日发布，已发布 11 个 CSV）|
 | **P6.6** | ✅ | `pnpm quality` 每日数据质量报告（接入 daily 第 8 步）|
+| **P9 v0（USDC）** | 🟡 | 迁移 0022（subscriptions / crypto_payments / Watchlist 限额触发器）+ Worker `/api/v1/billing/{status,verify}`（多 RPC 兜底查链，已用真实 Base 交易验证解析）+ `/account` 购买区；**待收款地址**（`CRYPTO_PAY_TO` secret）|
 | **P8 v1** | ✅ | 账号（Supabase 魔法链接）+ Watchlist + Telegram 告警（T-7/3/1 + 事后，`alert_log` 去重）；迁移 `0017` |
 | **P6.5** | ✅ | CoinGecko 元数据（`pnpm meta`，373 个代币）；上币 FDV 覆盖 34% → **94.5%**（供应 = DefiLlama → CG max/total 兑底）|
 | **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |

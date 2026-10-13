@@ -7,6 +7,8 @@
  *   - 统一响应：{ ok: true, ... } / { ok: false, error }
  *   - 文档：GET /api/v1/ 与 /api/v1/openapi.json
  */
+import { handleBilling } from "./billing";
+
 export interface ApiEnv {
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
@@ -191,6 +193,8 @@ function endpointList(): Record<string, string> {
     "GET /api/v1/stats/unlocks": "解锁 v2 统计（float 分桶 / 接收方 / 净效应斜率）",
     "GET /api/v1/stats/listings": "上币统计（形式 / 类别 / FDV 档）",
     "GET /api/v1/export/:name.csv": "数据集 CSV（cohort / 预期层 / 统计；由部署流程每日发布）",
+    "GET /api/v1/billing/status": "订阅状态 + USDC 收款信息（需登录）",
+    "POST /api/v1/billing/verify": "提交 tx hash 验证 USDC 支付并开通 Pro（需登录）",
     auth: "可选 x-api-key（或 Authorization: Bearer float_...）；匿名可用，带 key 走计量",
   };
 }
@@ -337,6 +341,12 @@ export async function handleApi(request: Request, env: ApiEnv, url: URL): Promis
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS });
   }
+
+  // 订阅/支付（POST，需登录；不走公共缓存）
+  if (url.pathname.startsWith("/api/v1/billing/")) {
+    return handleBilling(request, env, url);
+  }
+
   if (request.method !== "GET") return fail(405, "method_not_allowed");
 
   // 可选 API key + 计量（匿名仍可用；无效 key 直接 401）
