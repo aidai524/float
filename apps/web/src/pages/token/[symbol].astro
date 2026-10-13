@@ -14,8 +14,10 @@ export async function getStaticPaths() {
 }
 
 const { token } = Astro.props;
-const events = await listEventsForToken(token.symbol);
-const daily = await getCandles(token.symbol, "1d", 400);
+const [events, daily] = await Promise.all([
+  listEventsForToken(token.symbol),
+  getCandles(token.symbol, "1d", 400),
+]);
 
 const t0 = daily.length ? new Date(daily[0]!.ts).getTime() : 0;
 const t1 = daily.length ? new Date(daily[daily.length - 1]!.ts).getTime() : 0;

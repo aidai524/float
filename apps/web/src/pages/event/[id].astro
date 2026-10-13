@@ -23,16 +23,19 @@ export async function getStaticPaths() {
 
 const { event } = Astro.props;
 const e = event;
-const baseline = await getBaseline(e.id);
-const expectation = await getEventExpectation(e.id);
-const listingBaseline = e.event_type.startsWith("listing")
-  ? await getListingBaseline(e.id)
-  : null;
+const isListing = e.event_type.startsWith("listing");
+// 并行拉取（串行会让 3,500+ 页的构建时间翻倍）
+const [baseline, expectation, candleResult, listingBaseline] = await Promise.all([
+  getBaseline(e.id),
+  getEventExpectation(e.id),
+  getEventCandles(e.token_symbol, e.t0),
+  isListing ? getListingBaseline(e.id) : Promise.resolve(null),
+]);
 const listingStat = listingBaseline
   ? await getListingCategoryStat(listingBaseline.token_category)
   : null;
 
-const { interval, candles } = await getEventCandles(e.token_symbol, e.t0);
+const { interval, candles } = candleResult;
 const t = new Date(e.t0).getTime();
 const markers = candles.length ? [{ t, label: "T0" }] : [];
 const facts = eventFacts(e);

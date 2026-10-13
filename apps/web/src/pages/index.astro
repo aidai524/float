@@ -6,12 +6,14 @@ import CategoryPanel from "../components/CategoryPanel.astro";
 import { listCategoryStats, listEvents, listEventTableRows, listSurpriseEvents, listTypeStats, getSiteCounts } from "../lib/db";
 import { eventTypeLabel, fmtTs, fmtUsd, pct } from "../lib/format";
 
-const events = await listEvents(1000);
-const stats = await listTypeStats(5);
-const catStats = await listCategoryStats("listing_cex", 10);
-const recentRows = await listEventTableRows(100);
-const surpriseEvents = await listSurpriseEvents();
-const counts = await getSiteCounts();
+const [events, stats, catStats, recentRows, surpriseEvents, counts] = await Promise.all([
+  listEvents(1000),
+  listTypeStats(5),
+  listCategoryStats("listing_cex", 10),
+  listEventTableRows(100),
+  listSurpriseEvents(),
+  getSiteCounts(),
+]);
 
 const now = Date.now();
 
