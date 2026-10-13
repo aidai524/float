@@ -30,6 +30,22 @@ const BINANCE = "https://api.binance.com";
 const DVOL_CURRENCIES = new Set(["BTC", "ETH"]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Binance 请求：瞬时网络错误 / 5xx 重试 3 次（代理与 Binance 偶发 ECONNRESET） */
+async function fetchWithRetry(url: string, attempts = 3): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.status >= 500) throw new Error(`binance ${res.status}`);
+      return res;
+    } catch (err) {
+      lastErr = err;
+      if (i + 1 < attempts) await sleep(600 * (i + 1));
+    }
+  }
+  throw lastErr;
+}
+
 const argLimit = (() => {
   const i = process.argv.indexOf("--limit");
   return i >= 0 ? Number(process.argv[i + 1]) : Infinity;
@@ -89,7 +105,7 @@ async function fetchKlines(
   let start = startTime;
   while (start < endTime) {
     const u = `${BINANCE}/api/v3/klines?symbol=${symbol}&interval=${interval}&startTime=${start}&endTime=${endTime}&limit=1000`;
-    const res = await fetch(u);
+    const res = await fetchWithRetry(u);
     if (res.status === 400) return null; // 交易对不存在
     if (!res.ok) throw new Error(`binance ${res.status} ${symbol} ${interval}`);
     const rows = (await res.json()) as unknown[][];
@@ -250,76 +266,82 @@ async function main() {
     if (dvol?.length) console.log(`  ${symbol}: 已加载 ${dvol.length} 个 DVOL 点`);
 
     for (const e of evs) {
-      const t0 = new Date(e.t0).getTime();
-      // --- 1m 事件窗口 ---
-      // listing：公告可能早于开盘数小时到数天，锚点在首个成交时刻；给足 96h
-      const windowHours = e.event_type.startsWith("listing") ? listingWindowHours : 25;
-      const m1From = t0 - 60 * MINUTE;
-      const m1To = t0 + windowHours * 60 * MINUTE;
-      let m1 = await loadCandles(symbol, "1m", m1From, m1To);
-      const covered = m1.length ? (m1[m1.length - 1]?.ts ?? 0) : 0;
-      if (m1.length < 1400 || covered < m1To - 30 * MINUTE) {
-        const fetched = await fetchKlines(pair, "1m", m1From, m1To);
-        if (!fetched) {
+      try {
+        const t0 = new Date(e.t0).getTime();
+        // --- 1m 事件窗口 ---
+        // listing：公告可能早于开盘数小时到数天，锚点在首个成交时刻；给足 96h
+        const windowHours = e.event_type.startsWith("listing") ? listingWindowHours : 25;
+        const m1From = t0 - 60 * MINUTE;
+        const m1To = t0 + windowHours * 60 * MINUTE;
+        let m1 = await loadCandles(symbol, "1m", m1From, m1To);
+        const covered = m1.length ? (m1[m1.length - 1]?.ts ?? 0) : 0;
+        if (m1.length < 1400 || covered < m1To - 30 * MINUTE) {
+          const fetched = await fetchKlines(pair, "1m", m1From, m1To);
+          if (!fetched) {
+            skipped[symbol] = (skipped[symbol] ?? 0) + 1;
+            continue;
+          }
+          await upsertCandles(symbol, "1m", fetched);
+          m1 = fetched;
+          await sleep(120);
+        }
+
+        const r = computeReactions(m1, hourly, t0, { priceSource: SOURCE, impliedVol: dvol });
+        if (!r) {
           skipped[symbol] = (skipped[symbol] ?? 0) + 1;
           continue;
         }
-        await upsertCandles(symbol, "1m", fetched);
-        m1 = fetched;
-        await sleep(120);
-      }
 
-      const r = computeReactions(m1, hourly, t0, { priceSource: SOURCE, impliedVol: dvol });
-      if (!r) {
-        skipped[symbol] = (skipped[symbol] ?? 0) + 1;
-        continue;
-      }
-
-      const { error: upErr } = await db.from("event_reactions").upsert(
-        {
-          event_id: e.id,
-          price_source: SOURCE,
-          base_price: r.basePrice,
-          base_ts: new Date(r.baseTs).toISOString(),
-          base_after_t0: r.baseAfterT0,
-          ret_5m: r.ret5m,
-          ret_15m: r.ret15m,
-          ret_1h: r.ret1h,
-          ret_4h: r.ret4h,
-          ret_24h: r.ret24h,
-          vol_5m: r.vol5m,
-          vol_1h: r.vol1h,
-          vol_ratio: r.volRatio,
-          max_drawdown: r.maxDrawdown,
-          max_favorable: r.maxFavorable,
-          liquidity_ok: r.liquidityOk,
-          implied_move_1h: r.implied1h,
-          implied_move_4h: r.implied4h,
-          implied_move_24h: r.implied24h,
-          surprise_1h: r.surprise1h,
-          surprise_4h: r.surprise4h,
-          surprise_24h: r.surprise24h,
-          methodology_version: METHODOLOGY_VERSION,
-          computed_at: new Date().toISOString(),
-        },
-        { onConflict: "event_id,price_source,methodology_version" },
-      );
-      if (upErr) throw upErr;
-
-      await db
-        .from("tokens")
-        .upsert(
-          { symbol, adv_30d: r.adv30d, updated_at: new Date().toISOString() },
-          { onConflict: "symbol" },
+        const { error: upErr } = await db.from("event_reactions").upsert(
+          {
+            event_id: e.id,
+            price_source: SOURCE,
+            base_price: r.basePrice,
+            base_ts: new Date(r.baseTs).toISOString(),
+            base_after_t0: r.baseAfterT0,
+            ret_5m: r.ret5m,
+            ret_15m: r.ret15m,
+            ret_1h: r.ret1h,
+            ret_4h: r.ret4h,
+            ret_24h: r.ret24h,
+            vol_5m: r.vol5m,
+            vol_1h: r.vol1h,
+            vol_ratio: r.volRatio,
+            max_drawdown: r.maxDrawdown,
+            max_favorable: r.maxFavorable,
+            liquidity_ok: r.liquidityOk,
+            implied_move_1h: r.implied1h,
+            implied_move_4h: r.implied4h,
+            implied_move_24h: r.implied24h,
+            surprise_1h: r.surprise1h,
+            surprise_4h: r.surprise4h,
+            surprise_24h: r.surprise24h,
+            methodology_version: METHODOLOGY_VERSION,
+            computed_at: new Date().toISOString(),
+          },
+          { onConflict: "event_id,price_source,methodology_version" },
         );
+        if (upErr) throw upErr;
 
-      computed++;
-      const pct = (v: number | null) =>
-        v == null ? "  —  " : `${(v * 100).toFixed(2)}%`.padStart(7);
-      const liq = r.liquidityOk === null ? "?" : r.liquidityOk ? "Y" : "n";
-      console.log(
-        `  ✓ #${String(e.id).padStart(3)} ${symbol.padEnd(9)} 5m${pct(r.ret5m)} 1h${pct(r.ret1h)} 4h${pct(r.ret4h)} liq=${liq}`,
-      );
+        await db
+          .from("tokens")
+          .upsert(
+            { symbol, adv_30d: r.adv30d, updated_at: new Date().toISOString() },
+            { onConflict: "symbol" },
+          );
+
+        computed++;
+        const pct = (v: number | null) =>
+          v == null ? "  —  " : `${(v * 100).toFixed(2)}%`.padStart(7);
+        const liq = r.liquidityOk === null ? "?" : r.liquidityOk ? "Y" : "n";
+        console.log(
+          `  ✓ #${String(e.id).padStart(3)} ${symbol.padEnd(9)} 5m${pct(r.ret5m)} 1h${pct(r.ret1h)} 4h${pct(r.ret4h)} liq=${liq}`,
+        );
+      } catch (err) {
+        skipped[symbol] = (skipped[symbol] ?? 0) + 1;
+        console.error(`  · #${e.id} 失败：${(err as Error).message.split("\n")[0]}`);
+        await sleep(300);
+      }
     }
   }
 
