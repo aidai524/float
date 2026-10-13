@@ -36,7 +36,8 @@
     "deploy": "pnpm --filter @cee/web build && pnpm --filter @cee/worker run deploy",
     "meta": "tsx scripts/backfill-token-meta.ts",
     "api-key": "tsx scripts/api-key.ts",
-    "export": "tsx scripts/export-csv.ts"
+    "export": "tsx scripts/export-csv.ts",
+    "quality": "tsx scripts/data-quality.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

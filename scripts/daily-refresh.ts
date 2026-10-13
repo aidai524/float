@@ -171,6 +171,9 @@ async function main() {
   console.log("7) 派发个性化告警（Watchlist T-7/T-3/T-1 + 事后）");
   runScript("scripts/dispatch-alerts.ts");
 
+  console.log("8) 数据质量报告");
+  runScript("scripts/data-quality.ts");
+
   console.log("\n✓ 完成\n");
 }
 
