@@ -101,6 +101,7 @@ scripts/install-unlocks-cron.sh status
 | 组件 | 位置 | 原因 |
 |---|---|---|
 | 站点 + `/api/health` | Cloudflare Worker | CDN / 边缘 |
+| 站点自动重建 | GitHub Actions（每天 04:30 UTC） | VPS 更新数据后重新烘焙静态页 |
 | CMC 解锁 / 公告 / 宏观 / 反应 | VPS cron | 常开、源可达 |
 | DefiLlama 解锁快照 | VPS 浏览器（周期） | 仅浏览器能过质询 |
 | Supabase | 云端 | 唯一数据源 |

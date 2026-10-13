@@ -96,6 +96,7 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | P6.1 部分 | ✅ | DefiLlama 解锁历史回填（21,506 cliff，含接收方类别/分配名） |
 | P7.1 | ✅ | 仓位计算器 `/position`（用历史回撤分布 / 隐含波动定仓位） |
 | P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `bf347d3c` |
+| **P5.6** | ✅ | 站点自动重建部署：GitHub Actions `deploy.yml` 每天 04:30 UTC 构建 + 部署（数据不再脱节）|
 | **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |
 | P5.4 | ✅ | 每日刷新 `pnpm daily`（采集 → 解析 → reactions → expectations → 简报）；VPS cron 安装脚本 |
 
@@ -171,9 +172,10 @@ dvol_points       83,168
 
 ### P2 — 上线与分发（Phase 5）
 - ~~5.2 SEO + 性能~~ ✅：sitemap-index 已上线（3,561 URL）、首页 324KB、Lighthouse perf/a11y/SEO 100/100/100；**剩：把 sitemap 提交到 Google/Bing（需你的账号）**
-- ~~5.3 Telegram 简报~~ ✅ 代码（`pnpm digest`，dry-run 已验证）；**待你的 bot token + 频道 ID**（VPS .env）
+- ~~5.3 Telegram 简报~~ ✅ 已实际发送验证（bot `@www333ddd_bot` → chat `1068494943`）；VPS `.env` 需同值 + 再 `git pull`
 - ~~5.4 daily 管线~~ ✅ 已并入 reactions + expectations
 - ~~5.5 合规文案~~ ✅（页脚统一免责声明 + 数据源署名）
+- ~~5.6 站点自动重建~~ ✅ GitHub Actions `.github/workflows/deploy.yml`（每天 04:30 UTC）；仓库 Secrets：`SUPABASE_URL` / `SUPABASE_ANON_KEY` / `CLOUDFLARE_ACCOUNT_ID` / **`CLOUDFLARE_API_TOKEN`（待补，旧 token 已失效）**
 
 ### P3 — 供给侧加深（Phase 6）
 - **linear 解锁**：目前没导（`noOfTokens` 是「每周速率」不是额度，硬算会虚高）。需要单独的速率表达。
