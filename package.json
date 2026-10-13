@@ -29,6 +29,7 @@
     "daily": "tsx scripts/daily-refresh.ts",
     "probe": "tsx scripts/probe-sources.ts",
     "digest": "tsx scripts/telegram-digest.ts",
+    "alerts": "tsx scripts/dispatch-alerts.ts",
     "unlocks:import": "tsx scripts/backfill-unlocks.ts",
     "unlocks:snapshot": "node scripts/fetch-defillama-browser.mjs",
     "worker:dev": "pnpm --filter @cee/worker run dev",

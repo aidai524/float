@@ -159,6 +159,9 @@ async function main() {
   const digest = await maybeSendDigest(raw, {});
   console.log(`  ${digest.sent ? "✓ 已发送" : `未发送：${digest.reason}`}`);
 
+  console.log("7) 派发个性化告警（Watchlist T-7/T-3/T-1 + 事后）");
+  runScript("scripts/dispatch-alerts.ts");
+
   console.log("\n✓ 完成\n");
 }
 

@@ -1,0 +1,31 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AccountPanel from "../components/AccountPanel";
+import { listTokens } from "../lib/db";
+
+// anon key 本来就是公开的（浏览器端设计如此）；服务端构建时从 .env 注入
+const supabaseUrl = process.env.SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY ?? "";
+const tokens = await listTokens(400);
+---
+
+<Layout title="账号" subtitle="Watchlist 与告警">
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">账号</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+    维护你关注的代币，并配置解锁 / 上币事件的 Telegram 告警（T-7 / T-3 / T-1）。
+    公共研究数据无需登录即可浏览。
+  </p>
+
+  {
+    supabaseUrl && supabaseAnonKey ? (
+      <AccountPanel
+        client:load
+        supabaseUrl={supabaseUrl}
+        supabaseAnonKey={supabaseAnonKey}
+        tokenSymbols={tokens.map((t) => t.symbol)}
+      />
+    ) : (
+      <p class="text-[13px] text-rose-400">构建时缺少 SUPABASE_URL / SUPABASE_ANON_KEY</p>
+    )
+  }
+</Layout>

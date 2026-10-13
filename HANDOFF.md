@@ -98,6 +98,7 @@ pnpm --filter @cee/web dev   # http://localhost:4321 能打开总览，有数据
 | P5.1 | ✅ 部署 | Cloudflare Worker（静态资源 + `/api/health` + cron 触发器）；已上线 `bf347d3c` |
 | **P5.6** | ✅ | 站点自动重建部署：GitHub Actions `deploy.yml` 每天 04:30 UTC 构建 + 部署（数据不再脱节）|
 | **P10 v0** | ✅ | 公开只读 API `/api/v1/*`（边缘缓存 5 分钟）+ MCP Server（`packages/mcp`，6 个工具）|
+| **P8 v1** | ✅ | 账号（Supabase 魔法链接）+ Watchlist + Telegram 告警（T-7/3/1 + 事后，`alert_log` 去重）；迁移 `0017` |
 | **P5.2** | ✅ 部分 | sitemap/robots/canonical、首页 4.36MB→324KB、Lighthouse perf/a11y/SEO 100/100/100；待提交 Search Console |
 | P5.4 | ✅ | 每日刷新 `pnpm daily`（采集 → 解析 → reactions → expectations → 简报）；VPS cron 安装脚本 |
 
@@ -213,6 +214,7 @@ scripts/
   fetch-defillama-browser.mjs      浏览器快照（patchright/playwright × headless/headful）
   compute-reactions.ts             反应引擎（--min-pct）
   compute-expectations.ts          市场调整 + 长窗 + 事前漂移 + placebo（pnpm expectations）
+  dispatch-alerts.ts               个性化告警（Watchlist T-7/3/1 + 事后，alert_log 去重）
   install-daily-cron.sh / install-unlocks-cron.sh
 apps/web/                Astro SSG 前端（/listings = 上币特征化预期）
 apps/worker/src/api.ts   公开 API v1（/api/v1/*，边缘缓存）

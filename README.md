@@ -147,6 +147,15 @@ Claude Desktop / Cursor 配置：
 - 检测到 `HTTPS_PROXY` 时会自动走代理（依赖已装的 undici）
 - 冒烟测试：`pnpm --filter @cee/mcp test`
 
+## 账号 / Watchlist / 告警
+
+- `/account`：邮箱魔法链接登录（Supabase Auth），维护 Watchlist，配置 Telegram 告警
+- 告警：T-7 / T-3 / T-1 事件 + 同类基准（含 N），事件后 24h 内附实测反应
+- 派发：VPS daily 调用 `pnpm alerts`；`alert_log` 唯一键去重（同一条只发一次）
+- **一次性配置**：Supabase Dashboard → Authentication → URL Configuration
+  - Site URL：`https://float.aidai524.workers.dev`
+  - Redirect URLs：`https://float.aidai524.workers.dev/**`、`http://localhost:4321/**`
+
 ## 不可破的规则
 
 1. **前后端只读 `api.*` 契约视图**，永不直接读基础表、永不感知数据源。
