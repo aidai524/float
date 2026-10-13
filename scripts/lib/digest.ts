@@ -113,7 +113,7 @@ export async function buildDigest(raw: SupabaseClient): Promise<string> {
       api
         .from("events_v1")
         .select(
-          "id,token_symbol,event_type,t0,ret_1h,ret_4h,ret_24h,surprise_24h,magnitude_pct,source_detail",
+          "id,token_symbol,event_type,t0,ret_1h,ret_4h,ret_24h,surprise_24h,magnitude_usd,magnitude_pct,source_detail",
         )
         .gte("t0", ago24)
         .lte("t0", isoNow)
@@ -210,7 +210,11 @@ export async function buildDigest(raw: SupabaseClient): Promise<string> {
       t.startsWith("listing") ? 0 : t.startsWith("unlock") ? 1 : t.startsWith("macro") ? 2 : 9;
     const cand = recentRows
       .filter((e) => e.ret_1h != null || e.ret_4h != null || e.ret_24h != null)
-      .sort((a, b) => rank(a.event_type) - rank(b.event_type))
+      .sort((a, b) => {
+        const r = rank(a.event_type) - rank(b.event_type);
+        if (r !== 0) return r;
+        return (Number(b.magnitude_usd) || 0) - (Number(a.magnitude_usd) || 0);
+      })
       .slice(0, 8);
 
     for (const e of cand) {
@@ -224,10 +228,11 @@ export async function buildDigest(raw: SupabaseClient): Promise<string> {
       } else if (e.event_type.startsWith("unlock")) {
         const b = floatBucket(floatPct(e.source_detail, e.magnitude_pct));
         const stat = b ? floatStats.get(b) : null;
-        const tail =
-          stat && stat.n_excess >= 20
+        const tail = !b
+          ? "小额稀释（<0.5%），无同类基准"
+          : stat && stat.n_excess >= 20
             ? `同类 ${b} 桶调整中位 ${pct(stat.median_excess_24h)}（N=${stat.n_excess}）`
-            : "同类样本积累中";
+            : "同类样本不足";
         lines.push(`• <b>${esc(e.token_symbol)}</b> 解锁 · ${h24} · ${tail}`);
       } else if (e.event_type.startsWith("macro")) {
         const sur = e.surprise_24h == null ? "—" : `${Number(e.surprise_24h).toFixed(2)}×`;
