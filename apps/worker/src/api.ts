@@ -10,7 +10,13 @@
 export interface ApiEnv {
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  API_METER?: AnalyticsEngineDataset;
 }
+
+interface AnalyticsEngineDataset {
+  writeDataPoint: (point: { indexes?: string[]; blobs?: string[]; doubles?: number[] }) => void;
+}
+export type { AnalyticsEngineDataset };
 
 const CACHE_TTL_SECONDS = 300;
 const MAX_LIMIT = 200;
@@ -19,7 +25,7 @@ const DEFAULT_LIMIT = 50;
 const CORS: Record<string, string> = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, OPTIONS",
-  "access-control-allow-headers": "content-type",
+  "access-control-allow-headers": "content-type, x-api-key, authorization",
 };
 
 export function json(data: unknown, init: ResponseInit = {}): Response {
@@ -43,6 +49,7 @@ async function sb(
   view: string,
   params: Record<string, string | undefined>,
   extraHeaders: Record<string, string> = {},
+  profile = "api",
 ): Promise<{ rows: any[]; count: number | null; status: number }> {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("supabase_not_configured");
@@ -56,7 +63,7 @@ async function sb(
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
       authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
       accept: "application/json",
-      "accept-profile": "api",
+      "accept-profile": profile,
       ...extraHeaders,
     },
   });
@@ -79,6 +86,48 @@ const intParam = (v: string | null, def: number, max: number): number => {
   if (!Number.isFinite(n) || n <= 0) return def;
   return Math.min(Math.floor(n), max);
 };
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+type KeyInfo = { id: number; plan: string } | "anon" | "invalid";
+
+/** 可选 API key：x-api-key 或 Authorization: Bearer float_...；匿名可用 */
+async function resolveApiKey(request: Request, env: ApiEnv): Promise<KeyInfo> {
+  const auth = request.headers.get("authorization") ?? "";
+  const raw =
+    request.headers.get("x-api-key") ??
+    (auth.startsWith("Bearer float_") ? auth.slice("Bearer ".length) : null);
+  if (!raw) return "anon";
+
+  const hash = await sha256Hex(raw);
+  const cache = caches.default;
+  const cacheKey = new Request(`https://float.internal/api-key/${hash}`);
+  const hit = await cache.match(cacheKey);
+  if (hit) {
+    const cached = (await hit.json()) as { valid: boolean; id?: number; plan?: string };
+    return cached.valid ? { id: cached.id!, plan: cached.plan! } : "invalid";
+  }
+
+  const { rows } = await sb(
+    env,
+    "api_keys",
+    { key_hash: `eq.${hash}`, revoked: "eq.false", select: "id,plan", limit: "1" },
+    {},
+    "public",
+  );
+  const ok = rows.length ? { id: rows[0].id as number, plan: rows[0].plan as string } : null;
+  await cache.put(
+    cacheKey,
+    json(
+      { valid: !!ok, id: ok?.id, plan: ok?.plan },
+      { headers: { "cache-control": "max-age=60" } },
+    ),
+  );
+  return ok ?? "invalid";
+}
 
 const isoOrNull = (v: string | null): string | null => {
   if (!v) return null;
@@ -130,6 +179,7 @@ function endpointList(): Record<string, string> {
     "GET /api/v1/stats/event-types?min_n=20": "按事件类型的反应基准（中位/上涨占比/N）",
     "GET /api/v1/stats/unlocks": "解锁 v2 统计（float 分桶 / 接收方 / 净效应斜率）",
     "GET /api/v1/stats/listings": "上币统计（形式 / 类别 / FDV 档）",
+    auth: "可选 x-api-key（或 Authorization: Bearer float_...）；匿名可用，带 key 走计量",
   };
 }
 
@@ -235,6 +285,15 @@ export async function handleApi(request: Request, env: ApiEnv, url: URL): Promis
     return new Response(null, { status: 204, headers: CORS });
   }
   if (request.method !== "GET") return fail(405, "method_not_allowed");
+
+  // 可选 API key + 计量（匿名仍可用；无效 key 直接 401）
+  const keyInfo = await resolveApiKey(request, env);
+  if (keyInfo === "invalid") return fail(401, "invalid_api_key");
+  env.API_METER?.writeDataPoint({
+    indexes: [keyInfo === "anon" ? "anon" : String(keyInfo.id)],
+    blobs: [url.pathname],
+    doubles: [1],
+  });
 
   const cache = caches.default;
   const cacheKey = new Request(url.toString(), { method: "GET" });

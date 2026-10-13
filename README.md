@@ -50,6 +50,8 @@ cp .env.example .env          # 填入密钥（TypeSafe、Bark 等）
 | `pnpm digest` | Telegram 每日简报（`--dry-run` / `--force`）|
 | `pnpm expectations` | 市场调整 + placebo 净效应（解锁 v2）|
 | `pnpm meta` | CoinGecko 代币元数据回填（市值 / 最大供应 / 总供应）|
+| `pnpm api-key create/list/revoke` | 公开 API 的 key 管理（明文仅创建时显示）|
+| `pnpm export [--no-events]` | 契约视图导出 CSV 到 `exports/`（BI / 离线分析）|
 | `pnpm --filter @cee/mcp test` | MCP Server 冒烟测试 |
 | `pnpm ingest [source]` | 真实采集写入 Supabase（可选指定源） |
 | `pnpm enrich [limit]` | Jev 富化：事件类型 + 资产类别（crypto/rwa） |
@@ -126,12 +128,27 @@ curl "$BASE/api/v1/stats/listings"        # 上币形式/类别/FDV
 curl "$BASE/api/v1/openapi.json"
 ```
 
+**API key（可选）**：匿名可用；带 key 的请求会按 key 计量（Workers Analytics Engine）：
+
+```bash
+pnpm api-key create --name "alice"        # 明文只显示一次
+curl -H "x-api-key: float_..." "$BASE/api/v1/events/188"
+```
+
 ## MCP Server（给 AI 客户端）
 
 `packages/mcp` 是一个 stdio MCP Server，把公开 API 包成 6 个工具：
 `search_events` · `get_event` · `get_calendar` · `get_event_type_stats` · `get_unlock_stats` · `get_listing_stats`。
 
-Claude Desktop / Cursor 配置：
+Claude Desktop / Cursor 配置（发布到 npm 后可直接用 npx；未发布时用仓库路径）：
+
+```json
+{
+  "mcpServers": {
+    "float": { "command": "npx", "args": ["-y", "float-mcp"] }
+  }
+}
+```
 
 ```json
 {
@@ -142,6 +159,12 @@ Claude Desktop / Cursor 配置：
     }
   }
 }
+```
+
+发布（名字 `float-mcp` 已确认可用；需 npm 账号）：
+
+```bash
+cd packages/mcp && npm publish
 ```
 
 - 可用 `FLOAT_API_BASE` 指向其他环境

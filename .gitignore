@@ -35,3 +35,4 @@ preview/
 # Astro
 .astro/
 apps/web/dist/
+exports/

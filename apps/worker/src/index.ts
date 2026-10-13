@@ -4,10 +4,11 @@
  * 路由：/api/* 由本 Worker 处理，其余由静态资源（ASSETS）直接返回。
  * 数据源解析（解锁/公告）后续迁移到此处的 scheduled()。
  */
-import { handleApi } from "./api";
+import { handleApi, type AnalyticsEngineDataset } from "./api";
 
 export interface Env {
   ASSETS: Fetcher;
+  API_METER?: AnalyticsEngineDataset;
   // Secrets / vars（部署后用 `wrangler secret put` 或 vars 注入）
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;

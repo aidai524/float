@@ -1,14 +1,38 @@
 {
-  "name": "@cee/mcp",
+  "name": "float-mcp",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "Float MCP Server —— 让 AI 客户端直接查询加密事件反应数据",
+  "description": "Float MCP Server —— 加密事件（解锁 / 上币 / 宏观）实测反应数据，供 Claude / Cursor 等 AI 客户端查询",
   "bin": {
     "float-mcp": "./bin/float-mcp.mjs"
   },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aidai524/float.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://float.aidai524.workers.dev",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "crypto",
+    "unlocks",
+    "token-listing",
+    "event-study"
+  ],
   "scripts": {
     "test": "node test/smoke.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
