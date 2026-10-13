@@ -14,6 +14,8 @@
   "observability": { "enabled": true },
   // API 用量计量（free 档可用）：key/anon × 路径 × 计数
   "analytics_engine_datasets": [{ "binding": "API_METER", "dataset": "float_api" }],
+  // 数据集导出（CSV）：由部署工作流写入，Worker 只读提供
+  "r2_buckets": [{ "binding": "EXPORTS", "bucket_name": "float-exports" }],
   // 每日刷新（解锁 / 公告 / 反应）。先占位，迁移完成后在此触发。
   "triggers": {
     "crons": ["10 1 * * *"],

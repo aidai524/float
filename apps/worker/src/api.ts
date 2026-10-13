@@ -11,7 +11,17 @@ export interface ApiEnv {
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   API_METER?: AnalyticsEngineDataset;
+  EXPORTS?: R2BucketLike;
 }
+
+interface R2BucketLike {
+  get(key: string): Promise<{
+    body: ReadableStream;
+    httpMetadata?: { contentType?: string };
+    size?: number;
+  } | null>;
+}
+export type { R2BucketLike };
 
 interface AnalyticsEngineDataset {
   writeDataPoint: (point: { indexes?: string[]; blobs?: string[]; doubles?: number[] }) => void;
@@ -175,12 +185,55 @@ function endpointList(): Record<string, string> {
     "GET /api/v1/openapi.json": "OpenAPI 风格端点说明",
     "GET /api/v1/events": "事件列表（type/symbol/from/to/has_reaction/limit/offset/order）",
     "GET /api/v1/events/:id": "单事件详情（含市场调整与溯源）",
+    "GET /api/v1/events/:id/similar?k=5": "最像的历史事件（pgvector KNN，特征相似度）",
     "GET /api/v1/calendar?days=14": "未来 N 天的解锁 / 上币 / 宏观事件",
     "GET /api/v1/stats/event-types?min_n=20": "按事件类型的反应基准（中位/上涨占比/N）",
     "GET /api/v1/stats/unlocks": "解锁 v2 统计（float 分桶 / 接收方 / 净效应斜率）",
     "GET /api/v1/stats/listings": "上币统计（形式 / 类别 / FDV 档）",
+    "GET /api/v1/export/:name.csv": "数据集 CSV（cohort / 预期层 / 统计；由部署流程每日发布）",
     auth: "可选 x-api-key（或 Authorization: Bearer float_...）；匿名可用，带 key 走计量",
   };
+}
+
+async function sbRpc(env: ApiEnv, fn: string, args: Record<string, unknown>): Promise<any[]> {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("supabase_not_configured");
+  }
+  const res = await fetch(`${env.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      "content-type": "application/json",
+      "content-profile": "public",
+      accept: "application/json",
+    },
+    body: JSON.stringify(args),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`rpc ${fn} ${res.status}: ${text.slice(0, 120)}`);
+  try {
+    const parsed = text ? JSON.parse(text) : [];
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
+}
+
+async function handleExport(env: ApiEnv, name: string): Promise<Response> {
+  if (!env.EXPORTS) return fail(503, "exports_not_configured");
+  if (!/^[a-z0-9_]+\.csv$/.test(name)) return fail(400, "invalid_name");
+  const obj = await env.EXPORTS.get(name);
+  if (!obj) {
+    return fail(404, "export_not_found", "导出文件由部署工作流每日发布；见 /api/v1/ 索引");
+  }
+  return new Response(obj.body, {
+    headers: {
+      "content-type": "text/csv; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+      ...CORS,
+    },
+  });
 }
 
 async function handleEvents(env: ApiEnv, url: URL): Promise<Response> {
@@ -306,7 +359,15 @@ export async function handleApi(request: Request, env: ApiEnv, url: URL): Promis
     if (path === "/") res = json({ ok: true, endpoints: endpointList() });
     else if (path === "/openapi.json") res = await openapi();
     else if (path === "/events") res = await handleEvents(env, url);
-    else if (path.startsWith("/events/")) res = await handleEventDetail(env, path.slice(8));
+    else if (path.startsWith("/events/") && path.endsWith("/similar")) {
+      const id = path.slice("/events/".length, -"/similar".length);
+      if (!/^\d+$/.test(id)) res = fail(400, "invalid_id");
+      else {
+        const k = intParam(url.searchParams.get("k"), 5, 20);
+        const rows = await sbRpc(env, "similar_events", { p_event_id: Number(id), p_k: k });
+        res = json({ ok: true, event_id: Number(id), k, data: rows });
+      }
+    } else if (path.startsWith("/events/")) res = await handleEventDetail(env, path.slice(8));
     else if (path === "/calendar") res = await handleCalendar(env, url);
     else if (path === "/stats/event-types") {
       const minN = intParam(url.searchParams.get("min_n"), 1, 100000);
@@ -317,6 +378,7 @@ export async function handleApi(request: Request, env: ApiEnv, url: URL): Promis
       res = json({ ok: true, data: rows });
     } else if (path === "/stats/unlocks") res = await handleUnlockStats(env);
     else if (path === "/stats/listings") res = await handleListingStats(env);
+    else if (path.startsWith("/export/")) res = await handleExport(env, path.slice(8));
     else res = fail(404, "not_found", `unknown endpoint: ${path}`);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

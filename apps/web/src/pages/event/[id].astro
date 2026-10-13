@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import PriceChart from "../../components/PriceChart";
-import { getBaseline, getEventCandles, getEventExpectation, getListingBaseline, getListingCategoryStat, listEventsForPaths } from "../../lib/db";
+import { getBaseline, getEventCandles, getEventExpectation, getListingBaseline, getListingCategoryStat, getSimilarEvents, listEventsForPaths } from "../../lib/db";
 import {
   ASSET_COLOR,
   eventFacts,
@@ -25,11 +25,12 @@ const { event } = Astro.props;
 const e = event;
 const isListing = e.event_type.startsWith("listing");
 // 并行拉取（串行会让 3,500+ 页的构建时间翻倍）
-const [baseline, expectation, candleResult, listingBaseline] = await Promise.all([
+const [baseline, expectation, candleResult, listingBaseline, similar] = await Promise.all([
   getBaseline(e.id),
   getEventExpectation(e.id),
   getEventCandles(e.token_symbol, e.t0),
   isListing ? getListingBaseline(e.id) : Promise.resolve(null),
+  getSimilarEvents(e.id, 5),
 ]);
 const listingStat = listingBaseline
   ? await getListingCategoryStat(listingBaseline.token_category)
@@ -266,6 +267,60 @@ const jsonLd = {
                   </td>
                   <td class="mono px-3 py-2 text-right">
                     {r.pctv == null ? "—" : `${Math.round(Number(r.pctv) * 100)} 分位`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    similar.length > 0 && (
+      <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+        <h2 class="m-0 text-[13px] font-semibold">最像的历史事件（特征 KNN）</h2>
+        <p class="mb-3 mt-1 text-[12px] text-[var(--color-mut)]">
+          按 规模 / 稀释 / 资产类别 / 代币类别 / 流动性 的余弦相似度取最近的 {similar.length}
+          条（不含本事件）。相似 ≠ 因果，仅作历史对照。
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-[13px]">
+            <thead>
+              <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+                <th class="px-3 py-2 text-right">相似度</th>
+                <th class="px-3 py-2 text-left">代币</th>
+                <th class="px-3 py-2 text-left">类型</th>
+                <th class="px-3 py-2 text-left">时间</th>
+                <th class="px-3 py-2 text-right">规模</th>
+                <th class="px-3 py-2 text-right">4h</th>
+                <th class="px-3 py-2 text-right">24h</th>
+              </tr>
+            </thead>
+            <tbody>
+              {similar.map((s) => (
+                <tr class="border-b border-[var(--color-line)]">
+                  <td class="mono px-3 py-2 text-right text-[var(--color-mut)]">
+                    {Number(s.similarity).toFixed(3)}
+                  </td>
+                  <td class="px-3 py-2">
+                    <a href={`/event/${s.event_id}`} class="no-underline">
+                      {s.token_symbol}
+                    </a>
+                  </td>
+                  <td class="px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                    {eventTypeLabel(s.event_type)}
+                  </td>
+                  <td class="mono px-3 py-2 text-[12px] text-[var(--color-mut)]">
+                    {s.t0.slice(0, 10)}
+                  </td>
+                  <td class="mono px-3 py-2 text-right">{fmtUsd(s.magnitude_usd)}</td>
+                  <td class={`mono px-3 py-2 text-right ${pctClass(s.ret_4h)}`}>
+                    {pct(s.ret_4h)}
+                  </td>
+                  <td class={`mono px-3 py-2 text-right ${pctClass(s.ret_24h)}`}>
+                    {pct(s.ret_24h)}
                   </td>
                 </tr>
               ))}

@@ -24,6 +24,7 @@ const usd = (v: number) =>
 export default function PositionCalculator({ cohorts, defaultEntry = 0 }: Props) {
   const [type, setType] = useState(cohorts[0]?.event_type ?? "");
   const [mode, setMode] = useState<"implied" | "historical">("historical");
+  const [direction, setDirection] = useState<"long" | "short">("long");
   const [risk, setRisk] = useState(1000);
   const [leverage, setLeverage] = useState(1);
   const [entry, setEntry] = useState(defaultEntry);
@@ -42,11 +43,18 @@ export default function PositionCalculator({ cohorts, defaultEntry = 0 }: Props)
     const notional = risk / stopDistance;
     const qty = entry > 0 ? notional / entry : null;
     const margin = leverage > 1 ? notional / leverage : notional;
-    // 逐仓多单强平价（维持保证金率按 0.5% 估）
+    // 逐仓强平价（维持保证金率按 0.5% 估）
     const mmr = 0.005;
-    const liq = leverage > 1 && entry > 0 ? entry * (1 - 1 / leverage + mmr) : null;
-    return { notional, qty, margin, liq };
-  }, [stopDistance, risk, entry, leverage]);
+    const liq =
+      leverage > 1 && entry > 0
+        ? direction === "long"
+          ? entry * (1 - 1 / leverage + mmr)
+          : entry * (1 + 1 / leverage - mmr)
+        : null;
+    const liqDistance = liq != null && entry > 0 ? Math.abs(liq / entry - 1) : null;
+    const liqBeforeStop = liqDistance != null && stopDistance >= liqDistance;
+    return { notional, qty, margin, liq, liqDistance, liqBeforeStop };
+  }, [stopDistance, risk, entry, leverage, direction]);
 
   const row = "flex items-baseline justify-between border-b border-[var(--color-line)] py-2";
   const label = "text-[12px] text-[var(--color-mut)]";
@@ -126,6 +134,30 @@ export default function PositionCalculator({ cohorts, defaultEntry = 0 }: Props)
             onChange={(e) => setLeverage(Number(e.target.value))}
           />
         </div>
+
+        {leverage > 1 && (
+          <div className="mt-3">
+            <div className={label}>方向（影响强平价）</div>
+            <div className="mt-1 flex gap-3 text-[13px]">
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  checked={direction === "long"}
+                  onChange={() => setDirection("long")}
+                />
+                做多
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  checked={direction === "short"}
+                  onChange={() => setDirection("short")}
+                />
+                做空
+              </label>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
@@ -157,9 +189,24 @@ export default function PositionCalculator({ cohorts, defaultEntry = 0 }: Props)
               <span className={val}>{out ? `$${usd(out.margin)}` : "—"}</span>
             </div>
             {out?.liq != null && (
-              <div className={row}>
-                <span className={label}>强平价（逐仓多单，估）</span>
-                <span className={`${val} text-red-400`}>{out.liq.toFixed(2)}</span>
+              <>
+                <div className={row}>
+                  <span className={label}>
+                    强平价（逐仓{direction === "long" ? "多" : "空"}单，估，MMR 0.5%）
+                  </span>
+                  <span className={`${val} text-red-400`}>{out.liq.toFixed(2)}</span>
+                </div>
+                <div className={row}>
+                  <span className={label}>强平距离</span>
+                  <span className={`${val} text-red-400`}>{pct(out.liqDistance)}</span>
+                </div>
+              </>
+            )}
+
+            {out?.liqBeforeStop && (
+              <div className="mt-3 rounded border border-rose-500/40 bg-rose-500/10 p-3 text-[12px] text-rose-300">
+                警告：止损距离（{pct(stopDistance)}）大于强平距离（{pct(out.liqDistance)}），
+                按此设置价格会先触及强平。要么降低杠杆，要么收紧止损分位。
               </div>
             )}
 

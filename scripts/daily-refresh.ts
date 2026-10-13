@@ -152,6 +152,15 @@ async function main() {
   console.log("4) 市场调整 / placebo 净效应");
   runScript("scripts/compute-expectations.ts");
 
+  console.log("4.5) 刷新事件特征（可比事件 KNN）");
+  try {
+    const { data, error } = await raw.rpc("refresh_event_features");
+    if (error) throw error;
+    console.log(`  ✓ ${data} 条特征已更新`);
+  } catch (err) {
+    console.error(`  ✗ 特征刷新失败：${(err as Error).message}`);
+  }
+
   console.log("5) 生成简报");
   await brief();
 

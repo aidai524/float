@@ -1,0 +1,144 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { listCalendarDensity, listTypeStats } from "../lib/db";
+import { eventTypeLabel } from "../lib/format";
+
+const [stats, density] = await Promise.all([listTypeStats(10), listCalendarDensity()]);
+
+// ---- 矩阵：事件类型 × 资产类别（24h 中位） ----
+const types = [...new Set(stats.map((s) => s.event_type))];
+const assets = ["crypto", "rwa", "unknown"] as const;
+const cellMap = new Map(stats.map((s) => [`${s.event_type}|${s.asset_class}`, s]));
+const maxAbs = Math.max(0.005, ...stats.map((s) => Math.abs(s.median_24h ?? 0)));
+
+const heat = (v: number | null): string => {
+  if (v == null) return "rgba(148,163,184,0.06)";
+  const t = Math.min(1, Math.abs(v) / maxAbs);
+  const alpha = 0.1 + t * 0.7;
+  return v >= 0 ? `rgba(16,185,129,${alpha.toFixed(2)})` : `rgba(244,63,94,${alpha.toFixed(2)})`;
+};
+
+// ---- 日历密度：未来 60 天 ×（解锁 / 上币 / 宏观） ----
+const start = new Date();
+start.setUTCHours(0, 0, 0, 0);
+const days = Array.from({ length: 60 }, (_, i) =>
+  new Date(start.getTime() + i * 86_400_000).toISOString().slice(0, 10),
+);
+const dmap = new Map(density.map((d) => [`${d.day}|${d.category}`, d]));
+const cats = [
+  { id: "unlock", label: "解锁" },
+  { id: "listing", label: "上币" },
+  { id: "macro", label: "宏观" },
+] as const;
+const maxDay = Math.max(1, ...density.map((d) => d.n));
+const densityColor = (n: number): string =>
+  n === 0
+    ? "rgba(148,163,184,0.10)"
+    : `rgba(59,130,246,${(0.18 + Math.min(1, n / maxDay) * 0.72).toFixed(2)})`;
+const fmtDate = (d: string) => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
+const today = new Date().toISOString().slice(0, 10);
+---
+
+<Layout title="热力图" subtitle="事件类型 × 资产类别 · 未来 60 天密度">
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">热力图</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+    两张图：<strong>历史反应强度</strong>（事件类型 × 资产类别的 24h 中位收益）与
+    <strong>未来密度</strong>（未来 60 天每天的解锁 / 上币 / 宏观事件数量）。
+  </p>
+
+  <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <div class="mb-3 font-semibold">事件类型 × 资产类别 · 24h 中位收益</div>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12px] tabular-nums">
+        <thead>
+          <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+            <th class="px-3 py-2 text-left font-normal">事件类型</th>
+            {assets.map((a) => (
+              <th class="px-3 py-2 text-center font-normal">{a}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {types.map((t) => (
+            <tr class="border-t border-[var(--color-line)]">
+              <td class="px-3 py-2 whitespace-nowrap">{eventTypeLabel(t)}</td>
+              {assets.map((a) => {
+                const c = cellMap.get(`${t}|${a}`);
+                return (
+                  <td
+                    class="px-3 py-2 text-center"
+                    style={`background:${c ? heat(c.median_24h) : heat(null)}`}
+                    title={c ? `N=${c.n} · 上涨 ${c.pos_24h == null ? "—" : Math.round(c.pos_24h * 100) + "%"}` : "无样本"}
+                  >
+                    {c && c.median_24h != null ? (
+                      <span class="mono">
+                        {(c.median_24h * 100).toFixed(1)}%
+                        <span class="ml-1 text-[10px] text-[var(--color-mut)]">N={c.n}</span>
+                      </span>
+                    ) : (
+                      <span class="text-[var(--color-mut)]">—</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="mb-0 mt-2 text-[11px] text-[var(--color-mut)]">
+      绿色 = 正收益 · 红色 = 负收益 · 深浅 = |中位| 相对最大值 · 悬停看样本量与上涨占比。
+    </p>
+  </section>
+
+  <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <div class="mb-3 font-semibold">未来 60 天事件密度</div>
+    <div class="overflow-x-auto">
+      <div class="min-w-[760px]">
+        {cats.map((c) => (
+          <div class="mb-1 flex items-center gap-2">
+            <div class="w-[44px] text-right text-[11px] text-[var(--color-mut)]">{c.label}</div>
+            <div class="flex gap-[2px]">
+              {days.map((d) => {
+                const row = dmap.get(`${d}|${c.id}`);
+                const n = row?.n ?? 0;
+                const usd =
+                  row?.magnitude_usd != null
+                    ? ` · $${(Number(row.magnitude_usd) / 1e6).toFixed(1)}M`
+                    : "";
+                return (
+                  <div
+                    class="h-[18px] w-[12px] rounded-[2px]"
+                    style={`background:${densityColor(n)}`}
+                    title={`${d} ${c.label}：${n} 条${usd}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div class="mt-2 flex items-center gap-2">
+          <div class="w-[44px]" />
+          <div class="flex gap-[2px] text-[10px] text-[var(--color-mut)]">
+            {days.map((d, i) => (
+              <div class="w-[12px] text-center">
+                {i % 7 === 0 || d === today ? <span>{d === today ? "今" : fmtDate(d)}</span> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="mb-0 mt-2 text-[11px] text-[var(--color-mut)]">
+      颜色深浅 = 当天该类事件数量（悬停看日期 / 条数 / 解锁金额）。数据为构建时快照，每天自动重建。
+    </p>
+  </section>
+
+  <section
+    class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4 text-[12px] text-[var(--color-mut)]"
+  >
+    <p class="m-0">
+      收益口径 v1（原始收益，不剔 BTC）· 每个格子都带样本量 N · 历史分布不代表未来，仅供研究，非投资建议。
+    </p>
+  </section>
+</Layout>

@@ -5,6 +5,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type {
   Candle,
+  CalendarDensity,
   CategoryStatsV1,
   EventExpectationV1,
   EventTableRow,
@@ -14,6 +15,7 @@ import type {
   ListingCategoryStat,
   ListingFdvStat,
   ListingFormStat,
+  SimilarEvent,
   SurpriseRow,
   TokenV1,
   UnlockCategoryStat,
@@ -90,6 +92,24 @@ export async function listSurpriseEvents(limit = 1000): Promise<SurpriseRow[]> {
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as unknown as SurpriseRow[];
+}
+
+/** api.calendar_density_v1 —— 日历密度（未来 90 天 + 过去 30 天） */
+export async function listCalendarDensity(): Promise<CalendarDensity[]> {
+  const { data, error } = await api
+    .from("calendar_density_v1")
+    .select("*")
+    .order("day", { ascending: true })
+    .limit(2000);
+  if (error) throw error;
+  return (data ?? []) as CalendarDensity[];
+}
+
+/** public.similar_events() —— KNN 最像的历史事件（特征相似度） */
+export async function getSimilarEvents(eventId: number, k = 5): Promise<SimilarEvent[]> {
+  const { data, error } = await supabase.rpc("similar_events", { p_event_id: eventId, p_k: k });
+  if (error) throw error;
+  return (data ?? []) as SimilarEvent[];
 }
 
 /** 首页计数卡：事件总数 / 已测量反应 / 已分类代币 */

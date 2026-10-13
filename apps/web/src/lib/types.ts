@@ -358,3 +358,26 @@ export interface SurpriseRow {
   surprise_24h: number | null;
   implied_move_24h: number | null;
 }
+
+/** public.similar_events() —— KNN 最像的历史事件 */ export interface SimilarEvent {
+  event_id: number;
+  token_symbol: string;
+  event_type: string;
+  t0: string;
+  similarity: number;
+  ret_1h: number | null;
+  ret_4h: number | null;
+  ret_24h: number | null;
+  magnitude_usd: number | null;
+  magnitude_pct: number | null;
+}
+
+/** api.calendar_density_v1 —— 日历密度（热力图） */
+export interface CalendarDensity {
+  day: string;
+  category: string;
+  n: number;
+  n_cliff: number;
+  n_listing: number;
+  magnitude_usd: number | null;
+}

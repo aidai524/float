@@ -1,0 +1,152 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const BASE = "https://float.aidai524.workers.dev";
+
+const endpoints: Array<{ path: string; desc: string; sample: string }> = [
+  {
+    path: "/api/v1/",
+    desc: "端点索引",
+    sample: `curl "${BASE}/api/v1/"`,
+  },
+  {
+    path: "/api/v1/events",
+    desc: "事件列表：event_type（支持 unlock* 前缀）/ symbol / from / to / has_reaction / limit / offset / order",
+    sample: `curl "${BASE}/api/v1/events?event_type=unlock*&has_reaction=1&limit=20"`,
+  },
+  {
+    path: "/api/v1/events/:id",
+    desc: "单事件详情：反应指标、同类分位、市场调整、placebo 净效应、溯源",
+    sample: `curl "${BASE}/api/v1/events/188"`,
+  },
+  {
+    path: "/api/v1/events/:id/similar?k=5",
+    desc: "最像的历史事件（pgvector KNN，特征相似度）",
+    sample: `curl "${BASE}/api/v1/events/188/similar?k=5"`,
+  },
+  {
+    path: "/api/v1/calendar?days=14",
+    desc: "未来 N 天的解锁 / 上币 / 宏观事件",
+    sample: `curl "${BASE}/api/v1/calendar?days=14"`,
+  },
+  {
+    path: "/api/v1/stats/event-types?min_n=20",
+    desc: "按事件类型的反应基准（中位收益、上涨占比、样本量 N）",
+    sample: `curl "${BASE}/api/v1/stats/event-types?min_n=20"`,
+  },
+  {
+    path: "/api/v1/stats/unlocks",
+    desc: "解锁 v2：float 稀释分桶 / 接收方类别 / 剔除 BTC 与 placebo 的净效应",
+    sample: `curl "${BASE}/api/v1/stats/unlocks"`,
+  },
+  {
+    path: "/api/v1/stats/listings",
+    desc: "上币：按形式 / 代币类别 / FDV 档的反应区间",
+    sample: `curl "${BASE}/api/v1/stats/listings"`,
+  },
+  {
+    path: "/api/v1/export/:name.csv",
+    desc: "数据集 CSV（cohort / 预期层 / 统计视图），每日随站点重建发布到 R2",
+    sample: `curl -O "${BASE}/api/v1/export/listing_cohort_v1.csv"`,
+  },
+  {
+    path: "/api/v1/openapi.json",
+    desc: "OpenAPI 风格端点说明",
+    sample: `curl "${BASE}/api/v1/openapi.json"`,
+  },
+];
+
+const exports = [
+  "event_type_stats_v1",
+  "category_stats_v1",
+  "event_expectation_v1",
+  "unlock_cohort_v2",
+  "unlock_float_stats_v2",
+  "unlock_category_stats_v2",
+  "listing_cohort_v1",
+  "listing_form_stats_v1",
+  "listing_category_stats_v1",
+  "listing_fdv_stats_v1",
+];
+---
+
+<Layout title="API" subtitle="只读公开 API · MCP · CSV 导出">
+  <h1 class="m-0 mb-1 text-[18px] font-semibold">Float API</h1>
+  <p class="mb-4 mt-0 text-[13px] text-[var(--color-mut)]">
+    只读、无需 key（可选 key 走计量）、边缘缓存 5 分钟。所有数据来自
+    <code>api.*</code> 契约视图，每个统计都带样本量 N 与口径版本。
+  </p>
+
+  <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <div class="mb-2 font-semibold">端点</div>
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-[12px]">
+        <thead>
+          <tr class="text-[11px] uppercase tracking-wide text-[var(--color-mut)]">
+            <th class="px-2 py-2 text-left font-normal">端点</th>
+            <th class="px-2 py-2 text-left font-normal">说明</th>
+            <th class="px-2 py-2 text-left font-normal">示例</th>
+          </tr>
+        </thead>
+        <tbody>
+          {endpoints.map((e) => (
+            <tr class="border-t border-[var(--color-line)] align-top">
+              <td class="mono px-2 py-2 whitespace-nowrap">{e.path}</td>
+              <td class="px-2 py-2 text-[var(--color-mut)]">{e.desc}</td>
+              <td class="mono px-2 py-2 text-[11px] text-[var(--color-mut)]">{e.sample}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="mb-5 grid gap-4 lg:grid-cols-2">
+    <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+      <div class="mb-2 font-semibold text-[13px]">API key（可选）</div>
+      <p class="m-0 text-[12px] text-[var(--color-mut)]">
+        匿名即可调用；要计量/配额时带 <code>x-api-key</code>。key 由站点管理员用
+        <code>pnpm api-key create</code> 创建，库里只存 SHA-256。
+      </p>
+      <pre class="mt-2 overflow-x-auto rounded bg-[var(--color-bg)] p-2 text-[11px]"><code>curl -H "x-api-key: float_..." \
+  "{BASE}/api/v1/events/188"</code></pre>
+    </div>
+
+    <div class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+      <div class="mb-2 font-semibold text-[13px]">MCP Server（AI 客户端）</div>
+      <p class="m-0 text-[12px] text-[var(--color-mut)]">
+        把同样的数据包成 6 个工具给 Claude / Cursor 等：search_events · get_event ·
+        get_calendar · get_event_type_stats · get_unlock_stats · get_listing_stats。
+      </p>
+      <pre class="mt-2 overflow-x-auto rounded bg-[var(--color-bg)] p-2 text-[11px]"><code>{`{
+  "mcpServers": {
+    "float": { "command": "npx", "args": ["-y", "float-mcp"] }
+  }
+}`}</code></pre>
+    </div>
+  </section>
+
+  <section class="mb-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <div class="mb-2 font-semibold">CSV 导出</div>
+    <p class="mb-2 mt-0 text-[12px] text-[var(--color-mut)]">
+      每日随站点重建发布到 R2（不含全量 events，如需全量用仓库里的
+      <code>pnpm export</code>）。下载：
+    </p>
+    <ul class="m-0 grid list-none grid-cols-2 gap-x-4 gap-y-1 p-0 text-[12px] md:grid-cols-3">
+      {exports.map((name) => (
+        <li>
+          <a href={`/api/v1/export/${name}.csv`}>{name}.csv</a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section
+    class="rounded-lg border border-[var(--color-line)] bg-[var(--color-panel)] p-4 text-[12px] text-[var(--color-mut)]"
+  >
+    <p class="m-0">
+      使用条款：数据基于历史市场数据（Binance / DefiLlama / CoinMarketCap / FRED / Deribit），
+      仅供研究与教育，非投资建议；转载请注明来源（含 DefiLlama 署名）。
+    </p>
+  </section>
+</Layout>
